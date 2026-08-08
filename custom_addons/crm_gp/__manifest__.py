@@ -13,6 +13,7 @@
         "data/crm_lost_reasons.xml",
         "data/crm_team_assignment.xml",
         "data/activity_types.xml",
+        "data/mail_templates.xml",
         "data/automation_rules.xml",
         "data/quotation_validity.xml",
         "data/escalation_chain.xml",

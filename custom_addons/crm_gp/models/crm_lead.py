@@ -46,6 +46,9 @@ class CrmLead(models.Model):
         tag_high = self.env.ref("crm_gp.crm_gp_tag_high_priority")
         tag_overdue = self.env.ref("crm_gp.crm_gp_tag_overdue")
         todo_type = self.env.ref("mail.mail_activity_data_todo")
+        template_l2 = self.env.ref("crm_gp.crm_gp_template_escalation_l2")
+        template_l3 = self.env.ref("crm_gp.crm_gp_template_escalation_l3")
+        template_l4 = self.env.ref("crm_gp.crm_gp_template_escalation_l4")
 
         backup_user = self._gp_escalation_user(icp, "crm_gp.escalation_l2_backup_user_id")
         supervisor_user = self._gp_escalation_user(icp, "crm_gp.escalation_l3_supervisor_user_id")
@@ -83,6 +86,7 @@ class CrmLead(models.Model):
                     lead, activity, reached, tier, hours_overdue,
                     tag_overdue, todo_type,
                     backup_user, supervisor_user, management_user, revenue_threshold,
+                    template_l2, template_l3, template_l4,
                 )
             if reached != level:
                 activity.crm_gp_escalation_level = reached
@@ -93,7 +97,8 @@ class CrmLead(models.Model):
         return user or self.env.ref("base.user_admin")
 
     def _gp_escalate_level(self, lead, activity, level, tier, hours_overdue, tag_overdue, todo_type,
-                            backup_user, supervisor_user, management_user, revenue_threshold):
+                            backup_user, supervisor_user, management_user, revenue_threshold,
+                            template_l2, template_l3, template_l4):
         days_overdue = int(hours_overdue // 24)
         activity_label = activity.summary or activity.activity_type_id.name
 
@@ -120,6 +125,8 @@ class CrmLead(models.Model):
                 ),
                 user_id=backup_user.id,
             )
+            if backup_user.email:
+                template_l2.send_mail(lead.id, email_values={"email_to": backup_user.email})
 
         elif level == 3:
             last_message = lead.message_ids.sorted("date", reverse=True)[:1]
@@ -134,20 +141,11 @@ class CrmLead(models.Model):
                 ),
                 user_id=supervisor_user.id,
             )
+            if supervisor_user.email:
+                template_l3.send_mail(lead.id, email_values={"email_to": supervisor_user.email})
 
         elif level == 4:
             if tier == "medium_low" and lead.expected_revenue < revenue_threshold:
                 return
-            if not management_user.email:
-                return
-            self.env["mail.mail"].sudo().create({
-                "subject": _("GotaPura CRM: opportunity overdue - %(lead)s", lead=lead.name),
-                "body_html": _(
-                    "<p>Opportunity <b>%(name)s</b> (stage: %(stage)s, expected revenue: %(value).2f) "
-                    "is %(days)d days overdue with no action taken.</p>",
-                    name=lead.name, stage=lead.stage_id.name,
-                    value=lead.expected_revenue, days=days_overdue,
-                ),
-                "email_to": management_user.email,
-                "auto_delete": True,
-            })
+            if management_user.email:
+                template_l4.send_mail(lead.id, email_values={"email_to": management_user.email})

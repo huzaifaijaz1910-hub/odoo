@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Brief section 7: ten templates (seven customer facing, one per
+        stage plus Lost; three internal escalation notices from section
+        8). Exact approved wording has not been supplied yet - per the
+        brief, "I will paste the exact English text for each template
+        into this document as we go, so write the templates against what
+        is written here, not from your own drafting." So every body here
+        is the literal placeholder "[PENDING CLIENT WORDING - EN]" (and
+        "[PENDING CLIENT WORDING - PT]" in the Portuguese translation,
+        i18n/pt_AO.po) rather than invented copy.
+
+        What IS built now, so only the body needs replacing later:
+        - Correct model (crm.lead) and subject line, using the brief's own
+          subject wording where it was given, and Odoo 19 {{ }} inline
+          placeholder syntax for the one dynamic subject ("Your GotaPura
+          proposal — {reference}").
+        - use_default_to=True on the customer-facing templates, so the
+          lead's own partner_id/email_from is the recipient - no hardcoded
+          address.
+        - lang picked from the lead (falling back to its partner), so a
+          Portuguese speaking customer gets the Portuguese translation
+          automatically, per brief section 7's rule.
+        - Wired into the automations that should send each one - see
+          data/automation_rules.xml, data/escalation_chain.xml, and the
+          comments below for the one exception (Proposal).
+
+        Rules to apply once real copy lands (brief section 7, not
+        implemented in the placeholder body so nothing fake ships):
+        - Every template ends with sign-off "The GotaPura Sales Team".
+        - The strapline "Where your water is our priority" goes on the
+          first and last templates in the journey. Brief section 6 lists
+          New first and Lost last, but "the journey" could instead mean
+          the successful path ending at Won - flagged here rather than
+          picking silently; confirm with the client before finalising the
+          New/Won/Lost boundary. Placeholder below tentatively marks New
+          and Won as first/last (the successful-journey reading).
+        - Plain, warm, professional, short paragraphs, no marketing
+          language.
+        - Every dynamic value uses {{ object.partner_id.name }}-style
+          placeholder syntax; never hardcode a name, reference or amount.
+    -->
+
+    <record id="crm_gp_template_new" model="mail.template">
+        <field name="name">GotaPura CRM: New enquiry received</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">We have received your enquiry</field>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}</field>
+        <field name="use_default_to" eval="True"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <record id="crm_gp_template_qualified" model="mail.template">
+        <field name="name">GotaPura CRM: Qualified - survey options</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Next step: technical survey for your solution</field>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}</field>
+        <field name="use_default_to" eval="True"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <record id="crm_gp_template_survey" model="mail.template">
+        <field name="name">GotaPura CRM: Technical survey confirmed</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Technical survey confirmed</field>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}</field>
+        <field name="use_default_to" eval="True"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <!--
+        Not auto-sent on stage entry: the proposal itself is prepared by
+        the salesperson (brief's "Prepare and send the proposal" activity,
+        up to 3 business days after entering this stage), so the proposal
+        isn't ready to send the moment the stage changes. Instead this is
+        attached as a suggested template on that activity type (see
+        data/activity_types.xml pairing below) for the salesperson to use
+        when they actually send it.
+    -->
+    <record id="crm_gp_template_proposal" model="mail.template">
+        <field name="name">GotaPura CRM: Proposal sent</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Your GotaPura proposal — {{ object.name }}</field>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}</field>
+        <field name="use_default_to" eval="True"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <record id="crm_gp_template_negotiation" model="mail.template">
+        <field name="name">GotaPura CRM: Following up on proposal</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Following up on your proposal</field>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}</field>
+        <field name="use_default_to" eval="True"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <record id="crm_gp_template_won" model="mail.template">
+        <field name="name">GotaPura CRM: Award confirmation</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Welcome to GotaPura — award confirmation</field>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}</field>
+        <field name="use_default_to" eval="True"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <record id="crm_gp_template_lost" model="mail.template">
+        <field name="name">GotaPura CRM: Lost - courtesy email</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Thank you for your time</field>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}</field>
+        <field name="use_default_to" eval="True"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <!--
+        Internal escalation notices (brief section 8, levels 2-4). The
+        brief doesn't give exact subject wording for these three (only
+        the customer-facing seven have brief-specified subjects), so the
+        subjects below are functional/operational labels I wrote, not
+        client copy under the same approval requirement as the bodies -
+        flag if the client wants these worded/approved too. Recipients
+        are deliberately left unset here (no partner_to/email_to): the
+        escalation code in models/crm_lead.py resolves the right person
+        from the ir.config_parameter placeholders (see
+        data/escalation_chain.xml) and passes them at send time, since
+        that resolution needs Python regardless of the template.
+    -->
+    <record id="crm_gp_template_escalation_l2" model="mail.template">
+        <field name="name">GotaPura CRM: Escalation L2 - backup salesperson</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">GotaPura CRM: backup follow-up needed - {{ object.name }}</field>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <record id="crm_gp_template_escalation_l3" model="mail.template">
+        <field name="name">GotaPura CRM: Escalation L3 - supervisor review</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">GotaPura CRM: supervisor review needed - {{ object.name }}</field>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+
+    <record id="crm_gp_template_escalation_l4" model="mail.template">
+        <field name="name">GotaPura CRM: Escalation L4 - management notice</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">GotaPura CRM: opportunity overdue - {{ object.name }}</field>
+        <field name="auto_delete" eval="True"/>
+        <field name="body_html" type="html"><p>[PENDING CLIENT WORDING - EN]</p></field>
+    </record>
+</odoo>

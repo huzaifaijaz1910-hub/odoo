@@ -1,0 +1,80 @@
+# Translation of crm_gp
+# Portuguese wording is pending from the client, same as the English
+# source (see data/mail_templates.xml) - placeholders only, not a real
+# translation yet. Locale is pt_AO (Odoo has no bare "pt" code - only
+# pt_AO/pt_BR/pt_PT), chosen because this database's other custom addon
+# is l10n_ao (Angola); confirm with the client if pt_PT or pt_BR is
+# actually wanted instead.
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: \n"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_new
+msgid "We have received your enquiry"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_qualified
+msgid "Next step: technical survey for your solution"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_survey
+msgid "Technical survey confirmed"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_proposal
+msgid "Your GotaPura proposal — {{ object.name }}"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_negotiation
+msgid "Following up on your proposal"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_won
+msgid "Welcome to GotaPura — award confirmation"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_lost
+msgid "Thank you for your time"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_escalation_l2
+msgid "GotaPura CRM: backup follow-up needed - {{ object.name }}"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_escalation_l3
+msgid "GotaPura CRM: supervisor review needed - {{ object.name }}"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#: model:mail.template,subject:crm_gp.crm_gp_template_escalation_l4
+msgid "GotaPura CRM: opportunity overdue - {{ object.name }}"
+msgstr "[PENDING CLIENT WORDING - PT]"
+
+#. module: crm_gp
+#. All ten templates currently share the same literal placeholder body,
+#. so this one msgid/msgstr pair covers all of them (see the location
+#. references below) rather than repeating an identical entry ten times.
+#: model:mail.template,body_html:crm_gp.crm_gp_template_new
+#: model:mail.template,body_html:crm_gp.crm_gp_template_qualified
+#: model:mail.template,body_html:crm_gp.crm_gp_template_survey
+#: model:mail.template,body_html:crm_gp.crm_gp_template_proposal
+#: model:mail.template,body_html:crm_gp.crm_gp_template_negotiation
+#: model:mail.template,body_html:crm_gp.crm_gp_template_won
+#: model:mail.template,body_html:crm_gp.crm_gp_template_lost
+#: model:mail.template,body_html:crm_gp.crm_gp_template_escalation_l2
+#: model:mail.template,body_html:crm_gp.crm_gp_template_escalation_l3
+#: model:mail.template,body_html:crm_gp.crm_gp_template_escalation_l4
+msgid "<p>[PENDING CLIENT WORDING - EN]</p>"
+msgstr "<p>[PENDING CLIENT WORDING - PT]</p>"

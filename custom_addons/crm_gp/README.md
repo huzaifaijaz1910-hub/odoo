@@ -3,7 +3,7 @@
 Turns Odoo CRM into GotaPura's seven-stage sales pipeline (enquiry to signed
 installation). Full brief: `../GotaPura.md`.
 
-## Status: five slices in
+## Status: six slices in - every brief section built
 
 Per the brief's suggested order of work (section 15):
 
@@ -18,18 +18,104 @@ Per the brief's suggested order of work (section 15):
   reminder (see below).
 - Four-level overdue escalation chain (brief section 8 - see below).
 - Monthly performance report (brief section 11 - see below).
+- Email templates, wired into the automations above (brief section 7 -
+  see below).
 
-**Deliberately skipped, not forgotten** (brief section 7): all ten
-email templates. Section 7 says the client will paste the exact approved
-English wording and that templates must be "written against what is
-written here, not from your own drafting." No approved wording exists yet
-in the brief, so no `mail.template` records are created rather than
-guessing at marketing copy. Once wording is provided, add
-`data/mail_templates.xml` and wire the "send email" actions into the stage
-automations below.
+**Nothing left unbuilt in the brief.** The one thing genuinely
+unfinished - the ten templates' actual wording - isn't an engineering
+gap: the brief explicitly withholds it ("I will paste the exact English
+text... write against what is written here, not from your own
+drafting") and forbids drafting it ahead of time. See below for what
+*is* built around that gap, and exactly what's left for the client to
+drop in.
 
-**Not yet built**: the courtesy/lost email, blocked with the other
-templates.
+### Email templates (brief section 7) - infrastructure built, wording pending
+
+All ten `mail.template` records exist (`data/mail_templates.xml`), fully
+wired into the automations that should send each one, with every body
+holding the literal placeholder `[PENDING CLIENT WORDING - EN]` (and
+`[PENDING CLIENT WORDING - PT]` in the Portuguese translation) instead of
+invented copy. **When the client supplies real text, only the
+`body_html` field on each template needs replacing** - everything else
+(model, subject, recipient resolution, language selection, wiring) is
+already correct:
+
+| # | Template | Subject | Sent when |
+| :-- | :-- | :-- | :-- |
+| 1 | New | "We have received your enquiry" | Immediately on entering New |
+| 2 | Qualified | "Next step: technical survey for your solution" | 4h after entering Qualified |
+| 3 | Technical Survey | "Technical survey confirmed" | Immediately on entering the stage |
+| 4 | Proposal | "Your GotaPura proposal — {{ object.name }}" | Not auto-sent - see below |
+| 5 | Negotiation | "Following up on your proposal" | Immediately on entering the stage |
+| 6 | Won | "Welcome to GotaPura — award confirmation" | Immediately on entering the stage |
+| 7 | Lost | "Thank you for your time" | Immediately when marked lost |
+| 8 | Escalation L2 | "...backup follow-up needed..." | Escalation level 2 (brief §8) |
+| 9 | Escalation L3 | "...supervisor review needed..." | Escalation level 3 |
+| 10 | Escalation L4 | "...opportunity overdue..." | Escalation level 4 |
+
+Subjects 1-3, 5-7 are the brief's own wording verbatim; the Proposal
+subject uses the brief's `{{ }}` placeholder syntax for the reference.
+Subjects 8-10 aren't given in the brief (only body content is described
+for escalation notices, and only for level 3's supervisor summary), so
+those are functional labels I wrote, not approval-gated client copy like
+the rest - flag if the client wants those worded/approved too.
+
+**Proposal (#4) is deliberately not auto-sent** on stage entry: the
+proposal itself is prepared by the salesperson (the "Prepare and send the
+proposal" activity, up to 3 business days after entering the stage), so
+it isn't ready to send the moment the stage changes. Instead it's
+attached as a suggested template on that activity type
+(`mail_template_ids`), one click away for the salesperson when they
+actually send it.
+
+**Escalation levels 2-4** (#8-10) previously only created activities and
+followers; now each also sends its templated email to the relevant
+person (backup salesperson / supervisor / management), resolved from the
+same `ir.config_parameter` placeholders as before
+(`data/escalation_chain.xml`).
+
+**Technical setup that's already correct, ready for real copy:**
+
+- **Recipient**: the seven customer-facing templates use
+  `use_default_to=True`, so the lead's own partner/email is the
+  recipient - never hardcoded. The three escalation templates leave the
+  recipient unset in the template itself; the escalation code resolves it
+  from the `ir.config_parameter` placeholders and passes it at send time.
+- **Language**: `lang` on the customer-facing templates is
+  `{{ object.lang_id.code or object.partner_id.lang or 'en_US' }}`, so a
+  Portuguese-speaking customer's lead automatically gets the Portuguese
+  translation - verified end-to-end on a disposable database with
+  `pt_AO` installed as a language: a lead for a customer with
+  `lang='pt_AO'` correctly received the Portuguese placeholder subject
+  and body, not the English default.
+- **Portuguese translation** (`i18n/pt_AO.po`): same placeholder pattern,
+  loaded through Odoo's standard translation mechanism (per brief section
+  7 - "loaded through Odoo's standard translation mechanism... do not
+  create two separate template records per language"), not separate
+  template records. **Locale chosen as `pt_AO` (Angola)**, not `pt_PT` or
+  `pt_BR` - Odoo has no bare "pt" code, and this database's other custom
+  addon is `l10n_ao`. Flag with the client if a different Portuguese
+  variant is actually wanted. All ten templates currently share the
+  identical placeholder body, so the `.po` file has one consolidated
+  `msgid`/`msgstr` pair covering all ten locations rather than repeating
+  it - **once real (and differing) copy lands, that entry will need
+  splitting back into one per template**.
+- Once real wording exists, apply the brief's remaining rules when
+  writing it in: every template ends with sign-off "The GotaPura Sales
+  Team"; the strapline "Where your water is our priority" goes on the
+  first and last templates in the journey (tentatively New and Won here -
+  the successful-journey reading - vs. New and Lost if "the journey"
+  means the literal order in section 6; confirm with the client); plain,
+  warm, professional, short paragraphs, no marketing language; every
+  dynamic value uses `{{ object.partner_id.name }}`-style placeholders,
+  never hardcoded.
+
+**A bug worth knowing about, found and fixed while wiring this in**: the
+same `_is_recompute()` false-positive documented below for the Lost
+reactivation activity *also* affects the declarative "Send Email" action,
+not just "Create Next Activity" - confirmed by testing (the courtesy
+email silently produced no `mail.mail` until switched to a `code` action
+calling `template.send_mail()` directly, same fix pattern as before).
 
 ### Escalation chain (brief section 8)
 
@@ -309,9 +395,9 @@ to them:
 5. CRM > Configuration > Sales Teams: open "GotaPura Sales", confirm
    "Assignment Domain" excludes the Urgent tag, and that Settings >
    Technical > Scheduled Actions > "CRM: Lead Assignment" is active.
-6. Settings > Technical > Automation Rules: confirm the seven `crm_gp:`
-   rules (one per stage plus Lost) and that each shows the right activities
-   under its Actions tab.
+6. Settings > Technical > Automation Rules: confirm the `crm_gp:` rules
+   (one per stage plus Lost plus the delayed Qualified email) and that
+   each shows the right activities/actions under its Actions tab.
 7. Create an opportunity, move it through the stages one at a time, and
    confirm the matching activities appear on it each time with the right
    due dates and assignee (the opportunity's salesperson). Mark it lost
@@ -343,3 +429,13 @@ to them:
     `odoo shell` (with a recipient email configured) and check the
     generated `mail.mail` record's body against opportunities you'd
     expect to see for last month.
+11. Settings > Technical > Email > Templates: confirm all ten `GotaPura
+    CRM:` templates exist with the placeholder body. Create an
+    opportunity for a partner and confirm the "We have received your
+    enquiry" email is queued (Settings > Technical > Email > Emails);
+    move it to Technical Survey/Negotiation/Won/Lost and confirm each
+    stage's email queues too. Set a partner's language to Portuguese
+    (Angola) and confirm the queued email's subject/body switch to the
+    `[PENDING CLIENT WORDING - PT]` placeholder instead of English (needs
+    Portuguese (Angola) activated under Settings > Translations >
+    Languages first).

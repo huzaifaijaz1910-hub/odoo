@@ -12,11 +12,19 @@
         survey", "3 days after sending the proposal", a recurring follow up
         every 2-3 days) or are conditional ("only if applicable"). Those need
         activity-completion triggers, not stage-entry triggers, and are
-        deliberately left out of this slice rather than approximated. The
-        customer-facing emails per stage are also not wired here: brief
-        section 7 says the exact approved wording is supplied separately and
-        must not be drafted ahead of that. See README.md for the full list
-        of what is deferred.
+        deliberately left out of this slice rather than approximated. See
+        README.md for the full list of what is deferred.
+
+        Customer-facing emails (brief section 7) are wired to the
+        mail.template records in data/mail_templates.xml via "mail_post"
+        actions below - New, Technical Survey, Negotiation, Won and Lost
+        send on stage entry; Qualified sends 4 hours later (see the
+        separate on_time rule further down, since that needs hour
+        precision the stage-entry trigger doesn't have); Proposal is
+        intentionally not auto-sent (see data/mail_templates.xml). Every
+        template body is still a placeholder pending approved wording -
+        see that file - so this wiring wires up *when* each email fires,
+        not what it says.
 
         Where the brief specifies hours (e.g. "24 hours", "48 hours"), the
         built-in activity action only supports day/week/month granularity,
@@ -72,6 +80,15 @@
         <field name="activity_date_deadline_range_type">days</field>
         <field name="activity_user_type">generic</field>
         <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_new_email" model="ir.actions.server">
+        <field name="name">crm_gp: Send "enquiry received" email</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_new"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">mail_post</field>
+        <field name="template_id" ref="crm_gp_template_new"/>
+        <field name="mail_post_method">email</field>
     </record>
 
     <!-- Stage 2: Qualified -->
@@ -132,6 +149,37 @@
         <field name="activity_user_field_name">user_id</field>
     </record>
 
+    <!--
+        Qualified stage email, sent 4 hours after the stage change rather
+        than immediately (brief section 6). A separate rule, not another
+        action on crm_gp_automation_stage_qualified, because it needs an
+        hour-precision time-based trigger: crm.lead.date_last_stage_update
+        is a Datetime field (unlike mail.activity.date_deadline, which is
+        Date-only and caused the same problem for the escalation chain -
+        see data/escalation_chain.xml), so base.automation's "on_time"
+        trigger with an hour delay works correctly here without needing a
+        cron.
+    -->
+    <record id="crm_gp_automation_qualified_email" model="base.automation">
+        <field name="name">crm_gp: Qualified stage email (4h delay)</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="trigger">on_time</field>
+        <field name="trg_date_id" ref="crm.field_crm_lead__date_last_stage_update"/>
+        <field name="trg_date_range">4</field>
+        <field name="trg_date_range_type">hour</field>
+        <field name="trg_date_range_mode">after</field>
+        <field name="filter_domain" eval="&quot;[('stage_id', '=', %d)]&quot; % ref('crm_gp_stage_qualified')"/>
+    </record>
+    <record id="crm_gp_action_qualified_email" model="ir.actions.server">
+        <field name="name">crm_gp: Send "survey options" email</field>
+        <field name="base_automation_id" ref="crm_gp_automation_qualified_email"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">mail_post</field>
+        <field name="template_id" ref="crm_gp_template_qualified"/>
+        <field name="mail_post_method">email</field>
+    </record>
+
     <!-- Stage 3: Technical Survey -->
     <record id="crm_gp_automation_stage_survey" model="base.automation">
         <field name="name">crm_gp: Technical Survey stage activities</field>
@@ -152,6 +200,15 @@
         <field name="activity_date_deadline_range_type">days</field>
         <field name="activity_user_type">generic</field>
         <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_survey_email" model="ir.actions.server">
+        <field name="name">crm_gp: Send "technical survey confirmed" email</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_survey"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">mail_post</field>
+        <field name="template_id" ref="crm_gp_template_survey"/>
+        <field name="mail_post_method">email</field>
     </record>
 
     <!-- Stage 4: Proposal -->
@@ -175,6 +232,15 @@
         <field name="activity_user_type">generic</field>
         <field name="activity_user_field_name">user_id</field>
     </record>
+    <!--
+        The Proposal email is not auto-sent (see data/mail_templates.xml
+        for why) - instead it's attached as a suggested template on the
+        "Prepare and send the proposal" activity type, so it's one click
+        away for the salesperson when the proposal is actually ready.
+    -->
+    <record id="crm_gp_activity_type_send_proposal" model="mail.activity.type">
+        <field name="mail_template_ids" eval="[(4, ref('crm_gp_template_proposal'))]"/>
+    </record>
 
     <!-- Stage 5: Negotiation -->
     <record id="crm_gp_automation_stage_negotiation" model="base.automation">
@@ -196,6 +262,15 @@
         <field name="activity_date_deadline_range_type">days</field>
         <field name="activity_user_type">generic</field>
         <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_negotiation_email" model="ir.actions.server">
+        <field name="name">crm_gp: Send "following up on proposal" email</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_negotiation"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">mail_post</field>
+        <field name="template_id" ref="crm_gp_template_negotiation"/>
+        <field name="mail_post_method">email</field>
     </record>
 
     <!-- Stage 6: Won -->
@@ -247,13 +322,22 @@
         <field name="activity_user_type">generic</field>
         <field name="activity_user_field_name">user_id</field>
     </record>
+    <record id="crm_gp_action_won_email" model="ir.actions.server">
+        <field name="name">crm_gp: Send "award confirmation" email</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_won"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">mail_post</field>
+        <field name="template_id" ref="crm_gp_template_won"/>
+        <field name="mail_post_method">email</field>
+    </record>
 
     <!--
         Lost (brief section 6, "Lost via the Mark as Lost button"). Odoo's
         native lost flow already makes recording a reason mandatory, so no
         extra activity is created for that. This rule covers the 90 day
-        reactivation activity and the automatic "Reactivation 90d" tag.
-        Courtesy email is not wired here (pending approved wording).
+        reactivation activity, the automatic "Reactivation 90d" tag, and
+        the courtesy email (placeholder body, see data/mail_templates.xml).
     -->
     <record id="crm_gp_automation_lost" model="base.automation">
         <field name="name">crm_gp: Lost follow up</field>
@@ -272,17 +356,21 @@
         <field name="filter_domain">[('lost_reason_id', '!=', False)]</field>
     </record>
     <!--
-        Both effects are done in one "code" action, not the declarative
-        "Create Next Activity" action, because the built-in action silently
-        no-ops here: action_set_lost() writes lost_reason_id together with
-        probability/automated_probability in the same call, and the
-        built-in action's _is_recompute() guard (meant to stop duplicate
-        activities when a write is just a recompute side-effect) treats
-        that combined write as one and skips creating the activity. Direct
-        activity_schedule() is not subject to that guard.
+        All three effects (tag, reactivation activity, courtesy email) are
+        done in one "code" action, not the declarative "Create Next
+        Activity"/"Send Email" actions, because both built-ins silently
+        no-op here: action_set_lost() writes lost_reason_id together with
+        probability/automated_probability in the same call, and their
+        shared _is_recompute() guard (meant to stop duplicate
+        activities/emails when a write is just a recompute side-effect)
+        treats that combined write as one and skips running. Confirmed by
+        testing: the declarative "Send Email" action silently produced no
+        mail.mail here, exactly like the activity action did earlier.
+        Direct activity_schedule()/template.send_mail() calls are not
+        subject to that guard.
     -->
     <record id="crm_gp_action_lost_reactivation" model="ir.actions.server">
-        <field name="name">crm_gp: Reactivation activity + tag</field>
+        <field name="name">crm_gp: Reactivation activity + tag + courtesy email</field>
         <field name="base_automation_id" ref="crm_gp_automation_lost"/>
         <field name="model_id" ref="crm.model_crm_lead"/>
         <field name="usage">base_automation</field>
@@ -293,6 +381,7 @@ record.activity_schedule(
     summary='Reactivate lead',
     note='Recontact with news, a promotion or a revised proposal.',
     date_deadline=datetime.date.today() + dateutil.relativedelta.relativedelta(days=90),
-)</field>
+)
+env.ref('crm_gp.crm_gp_template_lost').send_mail(record.id, force_send=False)</field>
     </record>
 </odoo>
