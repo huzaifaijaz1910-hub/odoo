@@ -1,0 +1,20 @@
+{
+    "name": "GotaPura CRM",
+    "version": "19.0.1.0.0",
+    "category": "Sales/CRM",
+    "summary": "Seven stage sales pipeline with stage automations, escalation and fair lead distribution",
+    "author": "Supply Steer Technologies",
+    "website": "https://supplysteer.com",
+    "license": "Other proprietary",
+    "depends": ["crm", "mail", "sale_management", "base_automation"],
+    "data": [
+        "data/crm_stages.xml",
+        "data/crm_tags.xml",
+        "data/crm_lost_reasons.xml",
+        "data/crm_team_assignment.xml",
+        "data/automation_rules.xml",
+        "data/quotation_validity.xml",
+    ],
+    "installable": True,
+    "application": False,
+}

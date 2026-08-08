@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        The seven-stage GotaPura pipeline. "Lost" is deliberately not a stage:
+        it is handled by the native "Mark as Lost" flow on crm.lead, which
+        already records a mandatory crm.lost.reason.
+    -->
+    <record id="crm_gp_stage_new" model="crm.stage">
+        <field name="name">New</field>
+        <field name="sequence">10</field>
+        <field name="is_won" eval="False"/>
+        <field name="requirements">Enquiry received from any channel (website, phone, WhatsApp, referral, walk in). Not yet qualified.</field>
+    </record>
+
+    <record id="crm_gp_stage_qualified" model="crm.stage">
+        <field name="name">Qualified</field>
+        <field name="sequence">20</field>
+        <field name="is_won" eval="False"/>
+        <field name="requirements">Real need, budget, decision maker and timeline confirmed.</field>
+    </record>
+
+    <record id="crm_gp_stage_technical_survey" model="crm.stage">
+        <field name="name">Technical Survey</field>
+        <field name="sequence">30</field>
+        <field name="is_won" eval="False"/>
+        <field name="requirements">Technical data being collected (on site or online survey) to size the system.</field>
+    </record>
+
+    <record id="crm_gp_stage_proposal" model="crm.stage">
+        <field name="name">Proposal</field>
+        <field name="sequence">40</field>
+        <field name="is_won" eval="False"/>
+        <field name="requirements">Priced proposal sent to the customer. Valid for 15 days.</field>
+    </record>
+
+    <record id="crm_gp_stage_negotiation" model="crm.stage">
+        <field name="name">Negotiation</field>
+        <field name="sequence">50</field>
+        <field name="is_won" eval="False"/>
+        <field name="requirements">Adjustments, discounts and final terms being discussed.</field>
+    </record>
+
+    <record id="crm_gp_stage_won" model="crm.stage">
+        <field name="name">Won</field>
+        <field name="sequence">60</field>
+        <field name="is_won" eval="True"/>
+        <field name="requirements">Awarded. Contract and installation begin.</field>
+    </record>
+</odoo>

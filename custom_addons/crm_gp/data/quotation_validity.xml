@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Brief section 9: proposals are valid for 15 days from sending.
+
+        Expiry itself needs no automation: Odoo already computes
+        sale.order.validity_date from company.quotation_validity_days and
+        flags a draft/sent order as is_expired once that date passes (see
+        odoo/addons/sale/models/sale_order.py, _compute_validity_date /
+        _compute_is_expired) - that's the "expires automatically, so out of
+        date prices cannot keep circulating" behaviour the brief asks for.
+        Setting the company-wide default to 15 days is the only
+        configuration needed for that part.
+
+        This is a company-wide setting because this database appears to be
+        a single-company (GotaPura) instance; if other quotations on other
+        teams should keep a different validity, this needs to move to a
+        per-team or per-order default instead - flag that if it turns out
+        not to be single-company.
+    -->
+    <record id="base.main_company" model="res.company">
+        <field name="quotation_validity_days">15</field>
+    </record>
+
+    <!--
+        "A reminder goes out 3 days before expiry" (brief section 9). Not
+        one of the ten templates in section 7 (that list is stage emails
+        plus escalation notices only), so this is implemented as an
+        internal to-do activity for the quotation's salesperson rather than
+        a customer email - flag if the client actually meant a customer
+        facing reminder instead.
+
+        Scoped to quotations linked to the GotaPura Sales team, so this
+        does not create activities on unrelated sales work in this
+        database.
+    -->
+    <record id="crm_gp_cron_quotation_expiry_reminder" model="ir.cron">
+        <field name="name">crm_gp: Quotation expiry reminder</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">
+target_date = datetime.date.today() + datetime.timedelta(days=3)
+orders = model.search([
+    ('state', 'in', ['draft', 'sent']),
+    ('validity_date', '=', target_date),
+    ('team_id', '=', env.ref('crm_gp.crm_gp_sales_team').id),
+])
+activity_type_id = env.ref('mail.mail_activity_data_todo').id
+for order in orders:
+    if order.user_id and not order.activity_ids.filtered(lambda a: a.summary == 'Quotation expiring in 3 days'):
+        order.activity_schedule(
+            activity_type_id=activity_type_id,
+            summary='Quotation expiring in 3 days',
+            note='This quotation expires on %s. Follow up with the customer before it lapses.' % order.validity_date,
+            user_id=order.user_id.id,
+        )
+        </field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

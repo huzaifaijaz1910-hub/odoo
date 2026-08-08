@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Colour indices verified against the live Odoo 19 palette
+        (odoo/addons/web/static/src/core/colorlist/colorlist.js):
+        0 No color, 1 Red, 2 Orange, 3 Yellow, 4 Cyan, 5 Purple,
+        6 Almond, 7 Teal, 8 Blue, 9 Raspberry, 10 Green, 11 Violet.
+
+        Three indices in the brief did not match the colour name written
+        next to them and were corrected here (colour name wins, per the brief):
+          - Residential:      brief said 4 (Cyan)   -> corrected to 8 (Blue)
+          - Business:         brief said 6 (Almond)  -> corrected to 5 (Purple)
+          - Online Survey:    brief said 7 (Teal)    -> corrected to 4 (Cyan)
+
+        Two colour names in the brief do not exist in the Odoo 19 palette at
+        all ("Dark blue", "Grey"). Left as placeholders with the closest
+        available colour and flagged for the client to confirm:
+          - On site Survey ("Dark blue"): no dark blue in the palette; using
+            Violet (11) as a placeholder, distinct from Residential's Blue.
+          - Reactivation 90d ("Grey"): no grey in the named palette; using
+            "No color" (0), which renders as a neutral grey pill.
+    -->
+    <record id="crm_gp_tag_urgent" model="crm.tag">
+        <field name="name">Urgent</field>
+        <field name="color">1</field>
+    </record>
+    <record id="crm_gp_tag_high_priority" model="crm.tag">
+        <field name="name">High Priority</field>
+        <field name="color">2</field>
+    </record>
+    <record id="crm_gp_tag_medium_priority" model="crm.tag">
+        <field name="name">Medium Priority</field>
+        <field name="color">3</field>
+    </record>
+    <record id="crm_gp_tag_low_priority" model="crm.tag">
+        <field name="name">Low Priority</field>
+        <field name="color">10</field>
+    </record>
+    <record id="crm_gp_tag_residential" model="crm.tag">
+        <field name="name">Residential</field>
+        <field name="color">8</field>
+    </record>
+    <record id="crm_gp_tag_business" model="crm.tag">
+        <field name="name">Business</field>
+        <field name="color">5</field>
+    </record>
+    <record id="crm_gp_tag_onsite_survey" model="crm.tag">
+        <field name="name">On site Survey</field>
+        <field name="color">11</field>
+    </record>
+    <record id="crm_gp_tag_online_survey" model="crm.tag">
+        <field name="name">Online Survey</field>
+        <field name="color">4</field>
+    </record>
+    <record id="crm_gp_tag_reactivation_90d" model="crm.tag">
+        <field name="name">Reactivation 90d</field>
+        <field name="color">0</field>
+    </record>
+    <record id="crm_gp_tag_overdue" model="crm.tag">
+        <field name="name">Overdue</field>
+        <field name="color">1</field>
+    </record>
+</odoo>

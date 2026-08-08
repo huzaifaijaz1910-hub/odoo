@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Stage automations (brief section 6): dated work for the salesperson,
+        created via native Automation Rules (base.automation) using the
+        built-in "Create Next Activity" action - no Python needed for these.
+
+        Scope of this file: only the activities whose due date can be
+        computed purely from the moment the lead enters the stage (or is
+        marked lost). The brief's per-stage tables also list activities that
+        depend on something else finishing first (e.g. "48 hours after the
+        survey", "3 days after sending the proposal", a recurring follow up
+        every 2-3 days) or are conditional ("only if applicable"). Those need
+        activity-completion triggers, not stage-entry triggers, and are
+        deliberately left out of this slice rather than approximated. The
+        customer-facing emails per stage are also not wired here: brief
+        section 7 says the exact approved wording is supplied separately and
+        must not be drafted ahead of that. See README.md for the full list
+        of what is deferred.
+
+        Where the brief specifies hours (e.g. "24 hours", "48 hours"), the
+        built-in activity action only supports day/week/month granularity,
+        so these are rounded to the nearest day (24h -> 1 day, 48h -> 2
+        days). "Business days" are approximated as calendar days.
+    -->
+
+    <!-- Stage 1: New -->
+    <record id="crm_gp_automation_stage_new" model="base.automation">
+        <field name="name">crm_gp: New stage activities</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="trigger">on_stage_set</field>
+        <field name="trg_field_ref" eval="ref('crm_gp_stage_new')"/>
+    </record>
+    <record id="crm_gp_action_new_contact" model="ir.actions.server">
+        <field name="name">crm_gp: Contact the lead by call or WhatsApp</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_new"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_call"/>
+        <field name="activity_summary">Contact the lead by call or WhatsApp</field>
+        <field name="activity_note">First introduction call and confirmation of the need.</field>
+        <field name="activity_date_deadline_range">1</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_new_validate_contact" model="ir.actions.server">
+        <field name="name">crm_gp: Validate contact details</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_new"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_summary">Validate contact details</field>
+        <field name="activity_note">Confirm name, phone, email and location.</field>
+        <field name="activity_date_deadline_range">1</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_new_apply_tags" model="ir.actions.server">
+        <field name="name">crm_gp: Apply initial tags</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_new"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_summary">Apply initial tags</field>
+        <field name="activity_note">Priority plus customer type.</field>
+        <field name="activity_date_deadline_range">0</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+
+    <!-- Stage 2: Qualified -->
+    <record id="crm_gp_automation_stage_qualified" model="base.automation">
+        <field name="name">crm_gp: Qualified stage activities</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="trigger">on_stage_set</field>
+        <field name="trg_field_ref" eval="ref('crm_gp_stage_qualified')"/>
+    </record>
+    <record id="crm_gp_action_qualified_schedule_survey" model="ir.actions.server">
+        <field name="name">crm_gp: Schedule the survey</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_qualified"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_summary">Schedule the survey</field>
+        <field name="activity_note">Book the on site visit, or confirm the online survey form was completed.</field>
+        <field name="activity_date_deadline_range">2</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_qualified_notes" model="ir.actions.server">
+        <field name="name">crm_gp: Record qualification notes</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_qualified"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_summary">Record qualification notes</field>
+        <field name="activity_note">Need, budget, decision maker and timeline, written into the chatter.</field>
+        <field name="activity_date_deadline_range">0</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+
+    <!-- Stage 3: Technical Survey -->
+    <record id="crm_gp_automation_stage_survey" model="base.automation">
+        <field name="name">crm_gp: Technical Survey stage activities</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="trigger">on_stage_set</field>
+        <field name="trg_field_ref" eval="ref('crm_gp_stage_technical_survey')"/>
+    </record>
+    <record id="crm_gp_action_survey_carry_out" model="ir.actions.server">
+        <field name="name">crm_gp: Carry out the survey</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_survey"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_meeting"/>
+        <field name="activity_summary">Carry out the survey</field>
+        <field name="activity_note">Site visit, or analysis of the submitted online form.</field>
+        <field name="activity_date_deadline_range">5</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+
+    <!-- Stage 4: Proposal -->
+    <record id="crm_gp_automation_stage_proposal" model="base.automation">
+        <field name="name">crm_gp: Proposal stage activities</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="trigger">on_stage_set</field>
+        <field name="trg_field_ref" eval="ref('crm_gp_stage_proposal')"/>
+    </record>
+    <record id="crm_gp_action_proposal_send" model="ir.actions.server">
+        <field name="name">crm_gp: Prepare and send the proposal</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_proposal"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_summary">Prepare and send the proposal</field>
+        <field name="activity_note">Quotation generated in Sales and sent from the opportunity. Valid for 15 days.</field>
+        <field name="activity_date_deadline_range">3</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+
+    <!-- Stage 5: Negotiation -->
+    <record id="crm_gp_automation_stage_negotiation" model="base.automation">
+        <field name="name">crm_gp: Negotiation stage activities</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="trigger">on_stage_set</field>
+        <field name="trg_field_ref" eval="ref('crm_gp_stage_negotiation')"/>
+    </record>
+    <record id="crm_gp_action_negotiation_meeting" model="ir.actions.server">
+        <field name="name">crm_gp: Negotiation meeting or call</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_negotiation"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_meeting"/>
+        <field name="activity_summary">Negotiation meeting or call</field>
+        <field name="activity_note">Discuss adjustments and the conditions for closing.</field>
+        <field name="activity_date_deadline_range">2</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+
+    <!-- Stage 6: Won -->
+    <record id="crm_gp_automation_stage_won" model="base.automation">
+        <field name="name">crm_gp: Won stage activities</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="trigger">on_stage_set</field>
+        <field name="trg_field_ref" eval="ref('crm_gp_stage_won')"/>
+    </record>
+    <record id="crm_gp_action_won_contract" model="ir.actions.server">
+        <field name="name">crm_gp: Prepare and send the contract</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_won"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_summary">Prepare and send the contract</field>
+        <field name="activity_note">Issue the contract and the deposit invoice.</field>
+        <field name="activity_date_deadline_range">1</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_won_schedule_install" model="ir.actions.server">
+        <field name="name">crm_gp: Schedule the installation</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_won"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_summary">Schedule the installation</field>
+        <field name="activity_note">Coordinate the date with the customer and the technical team.</field>
+        <field name="activity_date_deadline_range">5</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+    <record id="crm_gp_action_won_welcome_call" model="ir.actions.server">
+        <field name="name">crm_gp: Welcome call</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_won"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_call"/>
+        <field name="activity_summary">Welcome call</field>
+        <field name="activity_note">Introduce the account manager and the next steps.</field>
+        <field name="activity_date_deadline_range">2</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
+
+    <!--
+        Lost (brief section 6, "Lost via the Mark as Lost button"). Odoo's
+        native lost flow already makes recording a reason mandatory, so no
+        extra activity is created for that. This rule covers the 90 day
+        reactivation activity and the automatic "Reactivation 90d" tag.
+        Courtesy email is not wired here (pending approved wording).
+    -->
+    <record id="crm_gp_automation_lost" model="base.automation">
+        <field name="name">crm_gp: Lost follow up</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <!--
+            "Mark as Lost" (action_set_lost) archives the lead first, then
+            writes lost_reason_id in a separate call - so an on_archive
+            trigger fires too early, before the reason is set. Watching the
+            lost_reason_id field going from unset to set instead fires at
+            the right time and is naturally idempotent (won't refire on
+            later, unrelated writes to an already-lost lead).
+        -->
+        <field name="trigger">on_write</field>
+        <field name="trigger_field_ids" eval="[(6, 0, [ref('crm.field_crm_lead__lost_reason_id')])]"/>
+        <field name="filter_pre_domain">[('lost_reason_id', '=', False)]</field>
+        <field name="filter_domain">[('lost_reason_id', '!=', False)]</field>
+    </record>
+    <!--
+        Both effects are done in one "code" action, not the declarative
+        "Create Next Activity" action, because the built-in action silently
+        no-ops here: action_set_lost() writes lost_reason_id together with
+        probability/automated_probability in the same call, and the
+        built-in action's _is_recompute() guard (meant to stop duplicate
+        activities when a write is just a recompute side-effect) treats
+        that combined write as one and skips creating the activity. Direct
+        activity_schedule() is not subject to that guard.
+    -->
+    <record id="crm_gp_action_lost_reactivation" model="ir.actions.server">
+        <field name="name">crm_gp: Reactivation activity + tag</field>
+        <field name="base_automation_id" ref="crm_gp_automation_lost"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">code</field>
+        <field name="code">record.write({'tag_ids': [(4, env.ref('crm_gp.crm_gp_tag_reactivation_90d').id)]})
+record.activity_schedule(
+    activity_type_id=env.ref('mail.mail_activity_data_todo').id,
+    summary='Reactivate lead',
+    note='Recontact with news, a promotion or a revised proposal.',
+    date_deadline=datetime.date.today() + dateutil.relativedelta.relativedelta(days=90),
+)</field>
+    </record>
+</odoo>

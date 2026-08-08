@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Fair lead distribution (brief section 10): use Odoo's native
+        Rule-Based Assignment (crm.team / crm.team.member assignment_*
+        fields) instead of custom code.
+
+        A dedicated team is created here, rather than reconfiguring the
+        stock "Sales" team, so GotaPura's assignment rule is namespaced and
+        does not disturb whatever that team is already used for.
+
+        assignment_domain excludes anything tagged "Urgent": those leads are
+        assigned manually by the supervisor per the brief.
+
+        Per-salesperson capacity (starting at 15-20 open leads) and holiday
+        exclusion are configured on crm.team.member records, which are not
+        created here because the sales team roster (who the salespeople and
+        supervisor are) is an open question - see section 12 of the brief
+        and the module README. Add crm.team.member records under this team
+        once that is confirmed, setting assignment_max per person and
+        toggling assignment_optout while someone is away.
+    -->
+    <record id="crm_gp_sales_team" model="crm.team">
+        <field name="name">GotaPura Sales</field>
+        <field name="use_opportunities" eval="True"/>
+        <field name="assignment_domain" eval="&quot;[('tag_ids', 'not in', [%d])]&quot; % ref('crm_gp_tag_urgent')"/>
+    </record>
+
+    <!-- Enable the standard daily lead-assignment cron. -->
+    <record id="crm.ir_cron_crm_lead_assign" model="ir.cron">
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

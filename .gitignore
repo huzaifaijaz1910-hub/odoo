@@ -1,0 +1,8 @@
+# Vendored Odoo source (not this project's code)
+/odoo-19.0+e.20260807/
+
+# Local server config (machine-specific paths, hashed admin password)
+/odoo.conf
+
+__pycache__/
+*.pyc
