@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Brief section 11: monthly performance summary, sent by email on
+        day 1 of every month.
+
+        The recipient ("send management a performance summary") is an
+        ir.config_parameter, not a guessed identity, same pattern as the
+        three unresolved people in the escalation chain -
+        crm_gp.monthly_report_recipient_user_id, a res.users id defaulting
+        to the admin placeholder below. Set the real recipient under
+        Settings > Technical > Parameters > System Parameters.
+
+        Stage-duration data comes from crm.lead's native
+        duration_tracking field (mail.tracking.duration.mixin, driven by
+        _track_duration_field = 'stage_id' on crm.lead - the same
+        mail.tracking.value history crm's own stage-duration/rotting
+        features are built on), not a bespoke tracking table.
+    -->
+    <record id="crm_gp_param_monthly_report_recipient" model="ir.config_parameter">
+        <field name="key">crm_gp.monthly_report_recipient_user_id</field>
+        <field name="value" eval="'%d' % ref('base.user_admin')"/>
+    </record>
+
+    <record id="crm_gp_cron_monthly_report" model="ir.cron">
+        <field name="name">crm_gp: Monthly performance report</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_gp_send_monthly_report()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(day=1, months=1)).strftime('%Y-%m-%d 06:00:00')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

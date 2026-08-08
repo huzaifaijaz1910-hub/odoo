@@ -16,6 +16,7 @@
         "data/automation_rules.xml",
         "data/quotation_validity.xml",
         "data/escalation_chain.xml",
+        "data/monthly_report.xml",
     ],
     "installable": True,
     "application": False,

@@ -3,7 +3,7 @@
 Turns Odoo CRM into GotaPura's seven-stage sales pipeline (enquiry to signed
 installation). Full brief: `../GotaPura.md`.
 
-## Status: four slices in
+## Status: five slices in
 
 Per the brief's suggested order of work (section 15):
 
@@ -17,6 +17,7 @@ Per the brief's suggested order of work (section 15):
 - Quotation validity: 15 day default, automatic expiry, 3-day-before
   reminder (see below).
 - Four-level overdue escalation chain (brief section 8 - see below).
+- Monthly performance report (brief section 11 - see below).
 
 **Deliberately skipped, not forgotten** (brief section 7): all ten
 email templates. Section 7 says the client will paste the exact approved
@@ -27,8 +28,8 @@ guessing at marketing copy. Once wording is provided, add
 `data/mail_templates.xml` and wire the "send email" actions into the stage
 automations below.
 
-**Not yet built**: the courtesy/lost email (blocked with the other
-templates) and the monthly performance report (see below for why).
+**Not yet built**: the courtesy/lost email, blocked with the other
+templates.
 
 ### Escalation chain (brief section 8)
 
@@ -84,16 +85,50 @@ recipient email was configured - the management email with the right
 subject/recipient); running the cron twice produced no duplicate
 activities or emails.
 
-### Monthly performance report (brief section 11) - not built
+### Monthly performance report (brief section 11)
 
-Same recipient problem as escalation level 4: "send management a
-performance summary" needs a management recipient, which is on the same
-unresolved list (section 12). On top of that, one of the requested
-figures - "average days spent in each stage" - isn't backed by any
-existing field; Odoo doesn't track stage-transition history out of the
-box, so getting it means designing a way to log stage changes with
-timestamps first. Flagging both rather than shipping a report with a
-guessed recipient or a fudged duration metric.
+Built as a monthly `ir.cron` (`crm_gp_cron_monthly_report` in
+`data/monthly_report.xml`, `nextcall` computed to land on the 1st of next
+month, logic in `models/monthly_report.py`), sending an HTML email
+covering everything the brief asks for: leads by source, conversion rate
+per stage, average days spent in each stage, won/lost counts with lost
+reasons broken down, and performance per salesperson. Covers the calendar
+month that just ended, for opportunities on the GotaPura Sales team.
+
+The recipient ("send management a performance summary") is
+`crm_gp.monthly_report_recipient_user_id`, an `ir.config_parameter`
+defaulting to the admin placeholder - same pattern as the escalation
+chain's three unresolved people, rather than blocking on the brief's
+undefined "management". **Set the real recipient under Settings >
+Technical > Parameters before relying on this.**
+
+Stage-duration data comes from crm.lead's native `duration_tracking`
+field (`mail.tracking.duration.mixin`, driven by crm.lead's
+`_track_duration_field = 'stage_id'`) - the same `mail.tracking.value`
+history crm's own stage-duration/rotting features are built on, not a
+bespoke tracking table. "Conversion rate per stage" is the percentage of
+this month's new leads whose `duration_tracking` contains an entry for
+that stage (i.e. they spent any time there, however brief); "average days
+per stage" averages actual seconds spent (including a genuine 0 for a
+same-instant transition) over leads that have an entry for that stage,
+converted to days.
+
+Two cohort/scope decisions worth knowing about, since the brief doesn't
+spell out the exact windowing:
+
+- **"Leads by source" and "conversion rate"** use opportunities *created*
+  in the reporting month.
+- **"Average days per stage" and "won/lost"** use a wider cohort: that
+  same set, plus any opportunity created earlier that was *won or lost*
+  during the reporting month - so a deal that closes this month still
+  shows up in this month's report even if it originated earlier.
+
+Verified end-to-end on a disposable database with hand-backdated leads
+(one created 25 days ago that moved New -> Qualified -> Won, one lost,
+one still open): every figure in the generated report - reached-counts,
+conversion percentages, per-stage average days, won/lost counts and
+revenue, lost reason breakdown, and per-salesperson stats - matched
+hand-computed expected values exactly.
 
 ### Quotation validity (`data/quotation_validity.xml`)
 
@@ -299,3 +334,12 @@ to them:
    shell` and confirm the Overdue tag, backup activity, supervisor
    activity and (with a recipient email configured) the management email
    appear as expected for how overdue it is.
+10. Settings > Technical > Parameters > System Parameters: confirm
+    `crm_gp.monthly_report_recipient_user_id` exists, then set it to the
+    real recipient. Settings > Technical > Scheduled Actions: confirm
+    "crm_gp: Monthly performance report" is active, monthly, and its
+    "Next Execution Date" lands on the 1st of a month. To test without
+    waiting, run `env['crm.lead']._cron_gp_send_monthly_report()` from
+    `odoo shell` (with a recipient email configured) and check the
+    generated `mail.mail` record's body against opportunities you'd
+    expect to see for last month.
