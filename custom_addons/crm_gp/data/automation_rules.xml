@@ -109,6 +109,28 @@
         <field name="activity_user_type">generic</field>
         <field name="activity_user_field_name">user_id</field>
     </record>
+    <!--
+        "Second phone follow up on day 3 if no reply" (brief section 6).
+        "If no reply" can't be reliably detected automatically (would need
+        inbound-email tracking), so this is created unconditionally as a
+        day-3 reminder with a note telling the salesperson to skip it if
+        the customer already replied - a harmless reminder either way,
+        unlike a conditional activity that would sometimes be flatly wrong.
+    -->
+    <record id="crm_gp_action_qualified_second_followup" model="ir.actions.server">
+        <field name="name">crm_gp: Second phone follow up</field>
+        <field name="base_automation_id" ref="crm_gp_automation_stage_qualified"/>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="usage">base_automation</field>
+        <field name="state">next_activity</field>
+        <field name="activity_type_id" ref="mail.mail_activity_data_call"/>
+        <field name="activity_summary">Second phone follow up</field>
+        <field name="activity_note">Skip if the customer has already replied to the survey email.</field>
+        <field name="activity_date_deadline_range">3</field>
+        <field name="activity_date_deadline_range_type">days</field>
+        <field name="activity_user_type">generic</field>
+        <field name="activity_user_field_name">user_id</field>
+    </record>
 
     <!-- Stage 3: Technical Survey -->
     <record id="crm_gp_automation_stage_survey" model="base.automation">
@@ -123,7 +145,7 @@
         <field name="model_id" ref="crm.model_crm_lead"/>
         <field name="usage">base_automation</field>
         <field name="state">next_activity</field>
-        <field name="activity_type_id" ref="mail.mail_activity_data_meeting"/>
+        <field name="activity_type_id" ref="crm_gp_activity_type_survey"/>
         <field name="activity_summary">Carry out the survey</field>
         <field name="activity_note">Site visit, or analysis of the submitted online form.</field>
         <field name="activity_date_deadline_range">5</field>
@@ -145,7 +167,7 @@
         <field name="model_id" ref="crm.model_crm_lead"/>
         <field name="usage">base_automation</field>
         <field name="state">next_activity</field>
-        <field name="activity_type_id" ref="mail.mail_activity_data_todo"/>
+        <field name="activity_type_id" ref="crm_gp_activity_type_send_proposal"/>
         <field name="activity_summary">Prepare and send the proposal</field>
         <field name="activity_note">Quotation generated in Sales and sent from the opportunity. Valid for 15 days.</field>
         <field name="activity_date_deadline_range">3</field>
@@ -167,7 +189,7 @@
         <field name="model_id" ref="crm.model_crm_lead"/>
         <field name="usage">base_automation</field>
         <field name="state">next_activity</field>
-        <field name="activity_type_id" ref="mail.mail_activity_data_meeting"/>
+        <field name="activity_type_id" ref="crm_gp_activity_type_negotiation_meeting"/>
         <field name="activity_summary">Negotiation meeting or call</field>
         <field name="activity_note">Discuss adjustments and the conditions for closing.</field>
         <field name="activity_date_deadline_range">2</field>

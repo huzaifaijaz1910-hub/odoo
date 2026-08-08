@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Dedicated, namespaced activity types for the parts of brief section
+        6 whose due date depends on a PREVIOUS activity being marked done
+        (e.g. "48 hours after the survey"), not on stage-entry time. Odoo's
+        native activity chaining (chaining_type='trigger' +
+        triggered_next_type_id, with delay_from='current_date' = "after
+        previous activity completion date") creates the next activity
+        automatically when the current one is completed - pure
+        configuration, no automation rule or code needed for the chain
+        itself.
+
+        These are separate types from the generic "Call"/"To-Do"/"Meeting"
+        ones (rather than adding chaining to those) because
+        triggered_next_type_id is a property of the TYPE, which is global.
+        Reusing a generic type would mean every future use of "To-Do"
+        anywhere in this database - including by other modules - would
+        also auto-chain into a GotaPura-specific follow-up. res_model is
+        set to crm.lead to keep these out of the type picker for other
+        models too.
+
+        Two brief items are still not automated here, deliberately:
+        - Technical Survey / "Confirm missing data" (section 6): explicitly
+          conditional ("only if applicable" - incomplete survey form).
+          Creating it unconditionally would be actively wrong, not just
+          redundant, so this is left for the salesperson's judgment.
+        - Negotiation / "Periodic follow up every 2-3 days": chaining only
+          supports one fixed delay, so this is approximated as every 2
+          days via crm_gp_activity_type_periodic_followup chaining to
+          itself. It will keep respawning for as long as someone keeps
+          marking each one done - it does not know to stop when the lead
+          leaves the Negotiation stage. Flagging this rather than building
+          stage-aware auto-cancellation, which is a bigger feature.
+        - Proposal / two follow-ups both specified as "N days after
+          sending": chaining can only go send -> follow up 1 -> follow up
+          2, so follow up 2's timing drifts from a fixed "7 days after
+          sending" to "4 days after follow up 1 is completed". Acceptable
+          approximation, flagged here rather than silently exact-sounding.
+    -->
+
+    <!-- Technical Survey: survey -> technical report (+2 days) -->
+    <record id="crm_gp_activity_type_survey" model="mail.activity.type">
+        <field name="name">GP: Carry out the survey</field>
+        <field name="summary">Carry out the survey</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-wrench</field>
+        <field name="chaining_type">trigger</field>
+    </record>
+    <record id="crm_gp_activity_type_technical_report" model="mail.activity.type">
+        <field name="name">GP: Issue the technical report</field>
+        <field name="summary">Issue the technical report</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-file-text-o</field>
+        <field name="delay_count">2</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+    </record>
+    <record id="crm_gp_activity_type_survey" model="mail.activity.type">
+        <field name="triggered_next_type_id" ref="crm_gp_activity_type_technical_report"/>
+    </record>
+
+    <!-- Proposal: send -> follow up 1 (+3 days) -> follow up 2 (+4 days, ~7 days after send) -->
+    <record id="crm_gp_activity_type_send_proposal" model="mail.activity.type">
+        <field name="name">GP: Prepare and send the proposal</field>
+        <field name="summary">Prepare and send the proposal</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-file-text-o</field>
+        <field name="chaining_type">trigger</field>
+    </record>
+    <record id="crm_gp_activity_type_proposal_followup" model="mail.activity.type">
+        <field name="name">GP: Proposal follow up</field>
+        <field name="summary">Proposal follow up</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-phone</field>
+        <field name="delay_count">3</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+        <field name="chaining_type">trigger</field>
+    </record>
+    <record id="crm_gp_activity_type_proposal_followup_2" model="mail.activity.type">
+        <field name="name">GP: Second follow up</field>
+        <field name="summary">Second follow up</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-envelope</field>
+        <field name="delay_count">4</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+    </record>
+    <record id="crm_gp_activity_type_send_proposal" model="mail.activity.type">
+        <field name="triggered_next_type_id" ref="crm_gp_activity_type_proposal_followup"/>
+    </record>
+    <record id="crm_gp_activity_type_proposal_followup" model="mail.activity.type">
+        <field name="triggered_next_type_id" ref="crm_gp_activity_type_proposal_followup_2"/>
+    </record>
+
+    <!-- Negotiation: meeting -> revised proposal (+1 day) -> periodic follow up (every 2 days, self-chaining) -->
+    <record id="crm_gp_activity_type_negotiation_meeting" model="mail.activity.type">
+        <field name="name">GP: Negotiation meeting or call</field>
+        <field name="summary">Negotiation meeting or call</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-handshake-o</field>
+        <field name="chaining_type">trigger</field>
+    </record>
+    <record id="crm_gp_activity_type_revised_proposal" model="mail.activity.type">
+        <field name="name">GP: Issue revised proposal</field>
+        <field name="summary">Issue revised proposal</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-file-text-o</field>
+        <field name="delay_count">1</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+        <field name="chaining_type">trigger</field>
+    </record>
+    <record id="crm_gp_activity_type_periodic_followup" model="mail.activity.type">
+        <field name="name">GP: Periodic follow up</field>
+        <field name="summary">Periodic follow up</field>
+        <field name="res_model">crm.lead</field>
+        <field name="icon">fa-phone</field>
+        <field name="delay_count">2</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+        <field name="chaining_type">trigger</field>
+    </record>
+    <record id="crm_gp_activity_type_negotiation_meeting" model="mail.activity.type">
+        <field name="triggered_next_type_id" ref="crm_gp_activity_type_revised_proposal"/>
+    </record>
+    <record id="crm_gp_activity_type_revised_proposal" model="mail.activity.type">
+        <field name="triggered_next_type_id" ref="crm_gp_activity_type_periodic_followup"/>
+    </record>
+    <record id="crm_gp_activity_type_periodic_followup" model="mail.activity.type">
+        <field name="triggered_next_type_id" ref="crm_gp_activity_type_periodic_followup"/>
+    </record>
+</odoo>

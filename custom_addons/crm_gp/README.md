@@ -139,25 +139,49 @@ under "GotaPura Sales" with `assignment_max` starting at 15-20, and toggle
 automatic holiday-calendar integration here — `hr_holidays` is not a
 dependency of this module).
 
-### Stage automations (`data/automation_rules.xml`)
+### Stage automations (`data/automation_rules.xml`, `data/activity_types.xml`)
 
 Native Automation Rules (`base.automation`), one per stage, triggered on
 "Stage is set to" and using the built-in "Create Next Activity" server
 action - no Python needed for these, plus one small `code` action for the
-Lost tag. Only activities whose due date is computable purely from the
-moment the lead enters the stage are included:
+Lost tag/activity. Stage-entry activities (created the moment the lead
+enters the stage):
 
-| Stage | Activities automated |
+| Stage | Activities automated on entry |
 | :--- | :--- |
 | New | Contact the lead (1d, Call), Validate contact details (1d, To-Do), Apply initial tags (0d, To-Do) |
-| Qualified | Schedule the survey (2d, To-Do), Record qualification notes (0d, To-Do) |
-| Technical Survey | Carry out the survey (5d, Meeting) |
-| Proposal | Prepare and send the proposal (3d, To-Do) |
-| Negotiation | Negotiation meeting or call (2d, To-Do/Meeting) |
+| Qualified | Schedule the survey (2d, To-Do), Record qualification notes (0d, To-Do), Second phone follow up (3d, Call) |
+| Technical Survey | Carry out the survey (5d) |
+| Proposal | Prepare and send the proposal (3d) |
+| Negotiation | Negotiation meeting or call (2d) |
 | Won | Prepare and send the contract (1d), Schedule the installation (5d), Welcome call (2d) |
 | Lost (lost reason set, i.e. "Mark as Lost") | Reactivation activity (90d, To-Do), auto-apply "Reactivation 90d" tag |
 
-Three mechanical notes, all called out in the XML file:
+On top of that, the activities whose due date depends on a **previous
+activity being marked done** (not stage-entry time) are wired up using
+Odoo's native activity chaining
+(`mail.activity.type.chaining_type`/`triggered_next_type_id`, defined in
+`data/activity_types.xml`) - marking one done automatically schedules the
+next, with its due date computed from the completion date. Pure
+configuration, tested end-to-end by marking each activity done and
+confirming the next one appears with the right due date:
+
+| Completing... | ...auto-creates | Due |
+| :--- | :--- | :--- |
+| Carry out the survey | Issue the technical report | +2 days |
+| Prepare and send the proposal | Proposal follow up | +3 days |
+| Proposal follow up | Second follow up | +4 days later |
+| Negotiation meeting or call | Issue revised proposal | +1 day |
+| Issue revised proposal | Periodic follow up | +2 days |
+| Periodic follow up | Periodic follow up (again) | +2 days, repeats |
+
+These use dedicated `GP:`-prefixed activity types instead of the generic
+Call/To-Do/Meeting types, because chaining is a property of the *type*,
+which is global - putting it on the generic "To-Do" type would make every
+unrelated use of "To-Do" anywhere in this database auto-chain into a
+GotaPura follow-up.
+
+Five mechanical notes/approximations, all called out in the XML files:
 
 - The Lost rule triggers on `lost_reason_id` going from unset to set
   (`on_write` + `filter_pre_domain`/`filter_domain`), not on archive. "Mark
@@ -172,20 +196,29 @@ Three mechanical notes, all called out in the XML file:
   a write is just a recompute side-effect) mistakes that combined write for
   one and skips creating the activity. Confirmed by testing both ways
   end-to-end before settling on the `code` version.
-
 - The built-in activity action only supports day/week/month granularity,
   so the brief's hour-level due dates are rounded to the nearest day
   (24h -> 1 day, 48h -> 2 days). "Business days" are approximated as
   calendar days.
-- **Deferred, not approximated**: activities whose due date depends on
-  another activity finishing (e.g. "48 hours after the survey", "3 days
-  after sending the proposal", "issue revised proposal 24h after the
-  meeting") or that are conditional/recurring (e.g. "only if applicable",
-  "periodic follow up every 2-3 days", "second phone follow up on day 3 if
-  no reply"). These need activity-completion triggers, which is a bigger
-  design decision (what exactly marks the prior activity "done", and does
-  the recurrence need its own scheduled action) better done as its own
-  slice than bolted on here.
+- "Second phone follow up on day 3 if no reply" (Qualified) is created
+  unconditionally rather than skipped: detecting "no reply" needs inbound
+  email tracking, which is out of scope, and an occasionally-unnecessary
+  reminder is harmless, unlike a missing one.
+- "Confirm missing data" (Technical Survey, "only if applicable") is
+  **not** automated - explicitly conditional on a judgement call
+  (incomplete survey form), where creating it unconditionally would be
+  actively wrong rather than just redundant. Left to the salesperson.
+- The two Proposal follow-ups are both specified as "N days after
+  sending", but native chaining can only go send -> follow up 1 -> follow
+  up 2 sequentially, so follow up 2's timing drifts from a fixed "7 days
+  after sending" to "4 days after follow up 1 is completed" if that
+  isn't completed exactly on its due date.
+- "Periodic follow up every 2-3 days" (Negotiation) is approximated as a
+  fixed 2 days via self-chaining (a type chaining to itself), since
+  chaining only supports one fixed delay. It keeps respawning for as long
+  as someone keeps marking each one done - it has no awareness of the
+  lead leaving the Negotiation stage, so a stray one can outlive the
+  stage. Flagging this rather than building stage-aware auto-cancellation.
 
 ## Open questions carried over from the brief (section 12)
 
@@ -217,3 +250,9 @@ to them:
    due dates and assignee (the opportunity's salesperson). Mark it lost
    with a reason and confirm the "Reactivate lead" activity (due in 90
    days) is created and the "Reactivation 90d" tag is applied.
+8. On an opportunity in Technical Survey, Proposal or Negotiation, mark
+   each stage's first activity ("Carry out the survey" / "Prepare and
+   send the proposal" / "Negotiation meeting or call") done one at a time
+   and confirm the next activity in that chain appears automatically with
+   the right due date (see the chaining table above). In Negotiation,
+   confirm marking "Periodic follow up" done creates another one.
