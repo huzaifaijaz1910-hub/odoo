@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Brief section 8: four-level overdue escalation chain.
+
+        Built as an hourly ir.cron (see models/crm_lead.py
+        _cron_gp_process_overdue_escalations), not a base.automation
+        time-based trigger, because the timing thresholds are hour-level
+        (Urgent +4h, High +24h, Medium/Low +48h, etc.) while
+        mail.activity.date_deadline is a Date field with no time-of-day
+        component. The cron supplies the hour precision; "hours overdue" is
+        counted from midnight after the due date (see the model for the
+        exact calculation).
+
+        Three of the four levels name people the brief lists as unresolved
+        (section 12): the level 2 backup salesperson, the level 3
+        supervisor, and level 4 general management. Rather than guessing,
+        each is a res.users id stored in ir.config_parameter, defaulting to
+        the admin user placeholder below - set the real values under
+        Settings > Technical > Parameters > System Parameters before this
+        goes anywhere near production, or the admin account will keep
+        getting every escalation.
+
+        The level 4 revenue threshold (medium/low priority only, brief:
+        "make the threshold a configuration setting rather than a
+        hardcoded number") is the same kind of placeholder, defaulting to
+        0.0 - i.e. not filtering anything until a real number is set.
+    -->
+    <record id="crm_gp_param_escalation_l2_backup_user" model="ir.config_parameter">
+        <field name="key">crm_gp.escalation_l2_backup_user_id</field>
+        <field name="value" eval="'%d' % ref('base.user_admin')"/>
+    </record>
+    <record id="crm_gp_param_escalation_l3_supervisor_user" model="ir.config_parameter">
+        <field name="key">crm_gp.escalation_l3_supervisor_user_id</field>
+        <field name="value" eval="'%d' % ref('base.user_admin')"/>
+    </record>
+    <record id="crm_gp_param_escalation_l4_management_user" model="ir.config_parameter">
+        <field name="key">crm_gp.escalation_l4_management_user_id</field>
+        <field name="value" eval="'%d' % ref('base.user_admin')"/>
+    </record>
+    <record id="crm_gp_param_escalation_l4_revenue_threshold" model="ir.config_parameter">
+        <field name="key">crm_gp.escalation_l4_revenue_threshold</field>
+        <field name="value">0.0</field>
+    </record>
+
+    <record id="crm_gp_cron_escalation" model="ir.cron">
+        <field name="name">crm_gp: Overdue escalation chain</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_gp_process_overdue_escalations()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

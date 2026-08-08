@@ -3,7 +3,7 @@
 Turns Odoo CRM into GotaPura's seven-stage sales pipeline (enquiry to signed
 installation). Full brief: `../GotaPura.md`.
 
-## Status: three slices in
+## Status: four slices in
 
 Per the brief's suggested order of work (section 15):
 
@@ -16,6 +16,7 @@ Per the brief's suggested order of work (section 15):
   below).
 - Quotation validity: 15 day default, automatic expiry, 3-day-before
   reminder (see below).
+- Four-level overdue escalation chain (brief section 8 - see below).
 
 **Deliberately skipped, not forgotten** (brief section 7): all ten
 email templates. Section 7 says the client will paste the exact approved
@@ -26,31 +27,62 @@ guessing at marketing copy. Once wording is provided, add
 `data/mail_templates.xml` and wire the "send email" actions into the stage
 automations below.
 
-**Not yet built** (later slices, per the brief): the courtesy/lost email
-and the monthly performance report (see below for why).
+**Not yet built**: the courtesy/lost email (blocked with the other
+templates) and the monthly performance report (see below for why).
 
-### Escalation chain (brief section 8) - not built, needs a decision first
+### Escalation chain (brief section 8)
 
-Two separate blockers, surfaced and confirmed with the client rather than
-worked around silently:
+Built as an hourly `ir.cron` (`crm_gp_cron_escalation` in
+`data/escalation_chain.xml`, logic in
+`models/crm_lead.py::_cron_gp_process_overdue_escalations`), not a
+`base.automation` time-based trigger, for a specific reason: the timing
+thresholds are hour-level (Urgent +4h, High +24h, Medium/Low +48h, etc.)
+but `mail.activity.date_deadline` is a `Date` field with no time-of-day
+component - activities are day-granular everywhere in Odoo. Running an
+hourly cron and computing "hours overdue" in Python (counted from
+midnight after the due date - see the model for the exact math) gets
+real hour precision without needing a custom datetime field on every
+activity.
 
-- **Timing precision isn't achievable as specified.** Level 1's delays are
-  hour-based (Urgent +4h, High +24h, Medium/Low +48h), counted from an
-  activity's due date. `mail.activity.date_deadline` is a `Date` field
-  with no time-of-day component - activities are day-granular everywhere
-  in Odoo, not a limitation specific to this rule. Rounding to whole days
-  (as done for the stage activities) would make "respond within 4 hours"
-  and "respond within 24 hours" indistinguishable, defeating the point of
-  the tiered urgency. Real hour-level timing needs a custom datetime field
-  tracking "became overdue at," which is a bigger design commitment than a
-  config tweak.
-- **Levels 2-4 name people who aren't identified yet** (brief section 12):
-  the backup salesperson (level 2), the team supervisor (level 3), and
-  who counts as general management (level 4). Can't wire up "notify X"
-  without knowing who X is.
+A small model extension backs this (`models/mail_activity.py`): one
+Integer field, `crm_gp_escalation_level`, added to `mail.activity`
+itself rather than to the lead. That's what makes the cron idempotent
+and self-resetting for free - the field lives on the specific overdue
+activity, so a fresh activity (stage change or chaining) always starts
+at level 0, with no explicit reset logic needed.
 
-Confirmed with the client to skip this slice entirely for now rather than
-build something that doesn't match the tiering, or guess at recipients.
+Per level: 1 applies the "Overdue" tag and posts a chatter reminder to
+the assigned salesperson; 2 subscribes a backup salesperson as a follower
+and gives them their own activity (original ownership untouched); 3
+gives the supervisor a summary activity with stage, expected value, days
+overdue and last contact (approximated as the most recent chatter message
+- the brief doesn't define "last contact" more precisely than that); 4
+sends an actual internal email to management, skipped for medium/low
+priority leads under the configured revenue threshold. Level 4's email
+is a short factual system notification generated in code, not a
+`mail.template` - deliberately kept out of the ten pending templates,
+since it's an operational alert, not client-facing copy needing approval.
+
+**The three people the brief leaves unidentified** (backup salesperson,
+supervisor, general management - section 12) are `ir.config_parameter`
+entries, not hardcoded: `crm_gp.escalation_l2_backup_user_id`,
+`crm_gp.escalation_l3_supervisor_user_id`,
+`crm_gp.escalation_l4_management_user_id`, each a `res.users` id,
+defaulting to the admin user as a placeholder. **Set the real people
+under Settings > Technical > Parameters > System Parameters before this
+goes near production** - until then every escalation lands on whoever
+installed the module. Same treatment for the level 4 revenue threshold
+(`crm_gp.escalation_l4_revenue_threshold`, brief: "make the threshold a
+configuration setting rather than a hardcoded number"), defaulting to
+`0.0` - i.e. not filtering anything until a real number is set.
+
+Tested end-to-end on a disposable database: a High-priority lead backdated
+to ~30-36h overdue stopped correctly at level 1 only; an Urgent lead
+backdated 5 days overdue cascaded through all 4 levels in one cron pass
+(tag, backup activity + follower, supervisor activity, and - once a
+recipient email was configured - the management email with the right
+subject/recipient); running the cron twice produced no duplicate
+activities or emails.
 
 ### Monthly performance report (brief section 11) - not built
 
@@ -256,3 +288,14 @@ to them:
    and confirm the next activity in that chain appears automatically with
    the right due date (see the chaining table above). In Negotiation,
    confirm marking "Periodic follow up" done creates another one.
+9. Settings > Technical > Parameters > System Parameters: confirm the four
+   `crm_gp.escalation_*` parameters exist, then set the three user-id ones
+   to real people before relying on this in anything resembling
+   production. Settings > Technical > Scheduled Actions: confirm
+   "crm_gp: Overdue escalation chain" is active, hourly. To test without
+   waiting a real 4+ hours, backdate an activity's due date a few days
+   into the past on a tagged opportunity (Urgent/High/no tag), then run
+   `env['crm.lead']._cron_gp_process_overdue_escalations()` from `odoo
+   shell` and confirm the Overdue tag, backup activity, supervisor
+   activity and (with a recipient email configured) the management email
+   appear as expected for how overdue it is.

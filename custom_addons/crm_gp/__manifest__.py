@@ -15,6 +15,7 @@
         "data/activity_types.xml",
         "data/automation_rules.xml",
         "data/quotation_validity.xml",
+        "data/escalation_chain.xml",
     ],
     "installable": True,
     "application": False,
