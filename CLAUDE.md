@@ -59,3 +59,8 @@ Odoo CLI notes:
 
 crm_gp installed successfully in crm_gp_test2. For future changes use
 -u crm_gp --stop-after-init against that database, not a fresh -i.
+
+Auto-reload only reloads Python code, NOT the database schema.
+Any change to field definitions (new field, changed type, new model)
+requires: odoo -c ~/odoo/odoo.conf -d <db> -u crm_gp --stop-after-init
+XML view changes are fine with reload alone.
