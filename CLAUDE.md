@@ -1,66 +1,146 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code working in this repository.
 
-## Repository layout
+## What this is
 
-This is an Odoo 19 (Enterprise) development workspace, not a single application repo:
+An Odoo 19 Enterprise development workspace — not a single application repo.
 
-- `odoo-19.0+e.20260807/` — the vendored Odoo core + enterprise source tree. Treat this as third-party code: read it for framework/API reference, but custom development should not modify it directly.
-  - `odoo/` — the Odoo framework itself (ORM, HTTP layer, CLI, `addons/` containing ~1470 core/enterprise modules).
-  - `setup/odoo` — the actual server entry point (equivalent to the classic `odoo-bin`; there is no `odoo-bin` at the repo root in this checkout).
-  - `venv/` — a pre-built Python 3.14 virtualenv for running Odoo.
-  - `requirements.txt` — pinned Python dependencies (version pinned per Python/OS combination).
-- `custom_addons/` — where project-specific custom Odoo modules go. Currently empty; this is the directory to develop in.
-- `odoo.conf` — server config used to run the local instance (db name `odoo19`, port 8069, addons_path pointing at both the core addons and `custom_addons/`).
+| Path | What it is |
+|---|---|
+| `odoo-19.0+e.20260807/` | Vendored Odoo core + enterprise source. **Third-party code — read for reference, never modify.** Gitignored. |
+| `odoo-19.0+e.20260807/odoo/addons/` | ~1470 core and enterprise modules. The best reference for how to build anything — imitate these. |
+| `odoo-19.0+e.20260807/venv/` | Python 3.14 virtualenv. Must be active for every command. |
+| `custom_addons/` | Project modules. **This is where development happens.** |
+| `odoo.conf` | Local server config. Gitignored (contains machine-specific paths). |
+
+Each module under `custom_addons/` may have its own `CLAUDE.md` with module-specific notes. Read it before working on that module.
 
 ## Running the server
 
-Activate the venv, then start via the `setup/odoo` entry point with the config file:
+Always activate the venv first:
 
 ```bash
-source odoo-19.0+e.20260807/venv/bin/activate
-python odoo-19.0+e.20260807/setup/odoo -c odoo.conf
+source ~/odoo/odoo-19.0+e.20260807/venv/bin/activate
 ```
 
-Common flags (appended to the command above):
-- `-u <module,...>` / `--update` — upgrade specific modules (needed after changing a module's code/data in `custom_addons/`).
-- `-i <module,...>` — install specific modules.
-- `--stop-after-init` — run the given install/update/test operation then exit, without starting the HTTP server (use this for module install/update/test runs from the CLI).
-- `--test-enable` / `--test-tags` / `--test-file` — control which tests run.
-- `--dev=xml,reload` — already set in `odoo.conf` for local dev (auto-reloads XML/Python on change).
-
-## Testing
-
-Odoo tests are run through the server process itself, scoped to a database and module(s), e.g.:
+Then use the `odoo` console script with an **absolute** config path:
 
 ```bash
-python odoo-19.0+e.20260807/setup/odoo -c odoo.conf -d odoo19 -u <your_module> --test-enable --stop-after-init
+odoo -c ~/odoo/odoo.conf -d <database> --http-port=8069
 ```
 
-Use `--test-tags` to filter to specific test classes/methods/tags (e.g. `--test-tags /your_module:TestClassName.test_method`).
+Use `odoo`, not `python setup/odoo`. The relative form breaks depending on
+the current directory and can pick up the wrong interpreter if the venv
+isn't active. The console script lives inside the venv, so it fails loudly
+instead of silently misbehaving.
 
-## Architecture notes (Odoo framework)
+## Install, upgrade, test
 
-- Modules are self-contained Python packages under an addons path (`odoo/addons/` for core/enterprise, `custom_addons/` for project modules), each with a `__manifest__.py` declaring dependencies, data files, and metadata.
-- Business objects are declared as ORM models (`odoo.models.Model` subclasses) using declarative fields (`odoo/fields.py`); the ORM auto-generates the DB schema and handles CRUD, security, and translations.
-- Views, actions, menus, security rules (`ir.model.access.csv`, record rules), and demo/data records are defined in XML/CSV data files loaded per the manifest's `data`/`demo` lists — module behavior is often driven as much by these data files as by Python code.
-- HTTP/controllers live under each module's `controllers/`, registered via `odoo.http.Controller`/`@route`; web/portal/website behavior builds on this layer.
-- The `odoo/cli/` package provides subcommands (`server`, `shell`, `scaffold`, `db`, `i18n`, `populate`, etc.) invoked through `setup/odoo <subcommand>`; `scaffold` generates a new module skeleton (useful when starting a new module under `custom_addons/`).
-- Client-side JS/CSS for a module lives under that module's `static/src/`, bundled via manifest `assets` entries (Odoo's own asset-bundling, not a separate frontend build tool).
+**Always pass `--stop-after-init` for install/upgrade/test runs.** Without it
+Odoo starts an HTTP server and never exits — a background task waiting for
+the process to finish will hang until it times out.
 
+```bash
+# First install into a new database
+odoo -c ~/odoo/odoo.conf -d <db> -i <module> --stop-after-init
 
-Odoo CLI notes:
-- Always use --stop-after-init for install/upgrade runs; otherwise the process
-  starts a web server and never exits.
-- Install: odoo -c ~/odoo/odoo.conf -i module_name --stop-after-init
-- Upgrade after code changes: -u instead of -i
-- Run the dev server separately in its own terminal
+# After changing code or data — this is the normal iteration loop
+odoo -c ~/odoo/odoo.conf -d <db> -u <module> --stop-after-init
 
-crm_gp installed successfully in crm_gp_test2. For future changes use
--u crm_gp --stop-after-init against that database, not a fresh -i.
+# Run tests
+odoo -c ~/odoo/odoo.conf -d <db> -u <module> --test-enable --stop-after-init
 
-Auto-reload only reloads Python code, NOT the database schema.
-Any change to field definitions (new field, changed type, new model)
-requires: odoo -c ~/odoo/odoo.conf -d <db> -u crm_gp --stop-after-init
-XML view changes are fine with reload alone.
+# Filter tests
+--test-tags /<module>:TestClassName.test_method
+```
+
+`-u` against an existing database takes seconds; `-i` on a fresh one takes
+minutes. Use `-i` only when the manifest's dependency list changes or when
+verifying a clean install.
+
+**Auto-reload does not migrate the schema.** `--dev=xml,reload` (set in
+`odoo.conf`) reloads Python and XML, but any change to a *field definition* —
+new field, changed type, new model — needs a `-u` run. Symptom of forgetting:
+`psycopg2.errors.UndefinedColumn: column ... does not exist` on a field you
+just added.
+
+## Verification standard
+
+**Test the way a user would, not the way the code expects.**
+
+Modules routinely create their own stages, teams, tags and activity types,
+then rely on records landing on them. Verification built from hand-constructed
+records will pass while the feature is unreachable through the UI — a real
+defect class found in this project (see `crm_gp_defect_log.md`, D-019).
+
+Before claiming a feature works:
+1. Create the record through the normal UI path with no manual setup.
+2. Confirm the automation fires without intervention.
+3. Confirm a **fresh** install works: `-i` on a brand-new database, then grep
+   the log for `ERROR`, `CRITICAL`, `Traceback`.
+
+Don't claim end-to-end verification that wasn't done end-to-end.
+
+## Environment gotchas
+
+These bit us once and will bite again:
+
+- **PyPDF2 must be `<3.0`.** Odoo 19's `sale` module calls
+  `cloneReaderDocumentRoot`, removed in PyPDF2 3.0. Symptom: sending a
+  quotation raises `DeprecationError` from deep inside `mail_template.py`.
+  Fix: `pip install "PyPDF2<3.0"`.
+- **inotify watch limit.** `--dev=reload` watches ~1470 addon directories.
+  Symptom: `ERRNO=28 No space left on device` at startup — this is the watch
+  limit, not the disk. Fix: raise `fs.inotify.max_user_watches`, or drop
+  `reload` from `dev_mode` and restart manually after Python changes.
+- **Odoo's default admin has no email address.** Any cron guarded by
+  `if not recipient.email: return` will silently do nothing. Set an email on
+  user 2 before testing anything that sends mail.
+- **Editable install noise.** `addons path is not a directory:
+  __editable__...__path_hook__` on every start is harmless — an artifact of
+  `pip install -e .`.
+- **Python 3.14.** Newer than Odoo 19 targets. If a library raises something
+  strange that isn't in Odoo's own code, the Python version is a plausible
+  suspect.
+
+## Odoo architecture notes
+
+- Modules are Python packages with a `__manifest__.py` declaring dependencies,
+  data files, and metadata. Behaviour is often driven as much by XML/CSV data
+  files as by Python.
+- Models subclass `odoo.models.Model` with declarative fields; the ORM
+  generates the schema and handles CRUD, security, and translations.
+- Views, actions, menus, security (`ir.model.access.csv`, record rules), and
+  data records live in XML/CSV loaded per the manifest's `data` list.
+- **Prefer configuration over code.** Odoo has native machinery for most
+  things — automation rules, `ir.cron`, rule-based assignment, activity
+  chaining via `mail.activity.type.triggered_next_type_id`. Reimplementing
+  these in Python is usually the wrong call.
+- Controllers live under `controllers/`, registered via
+  `odoo.http.Controller` / `@route`.
+- Client-side JS/CSS lives under `static/src/`, bundled via manifest `assets`
+  entries — Odoo's own bundler, not a separate frontend build.
+- `odoo scaffold <name> custom_addons/` generates a module skeleton.
+
+## Conventions
+
+- **Namespace everything.** External IDs, cron names, automation rule names
+  and activity types carry the module prefix, so it's obvious which module
+  owns a record.
+- **Don't modify other developers' modules.** In this project that means
+  `l10n_ao`, `zoom_tax_slab`, `bi_birthday_reminder`, `ai_claude`.
+- **No credentials or client data** in any tracked file.
+- **Placeholders over guesses.** When a requirement leaves something
+  undefined (a person, a threshold, a recipient), use an
+  `ir.config_parameter` with a safe default and flag it — don't invent a
+  value.
+- **Record what was assumed, skipped, or left open** in the commit message,
+  under its own heading. Not scattered through prose.
+
+## Git
+
+- One branch per piece of work: `feature/<module>` for new modules,
+  `fix/<module>-<topic>` for fixes. Merge to `main` when reviewed.
+- `main` means *current known state*, not *finished*. See `KNOWN_ISSUES.md`
+  for what's merged but incomplete.
