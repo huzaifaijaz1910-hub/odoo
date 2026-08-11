@@ -1,1 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_gp_email_typo_domain_user,sale.gp.email.typo.domain user,model_sale_gp_email_typo_domain,base.group_user,1,0,0,0
+access_sale_gp_email_typo_domain_sales_manager,sale.gp.email.typo.domain sales manager,model_sale_gp_email_typo_domain,sales_team.group_sale_manager,1,1,1,1

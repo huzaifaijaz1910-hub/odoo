@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Brief docs/briefs/sale_gp.md §6, §13 — every save-blocking shield must be
+         overridable by a named group and must say clearly why it fired.
+         Shield 3 (V3, wrong phone) is the only hard block built so far. -->
+    <record id="group_phone_shield_override_gp" model="res.groups">
+        <field name="name">Data Quality Shield Override</field>
+        <field name="privilege_id" ref="sales_team.res_groups_privilege_sales"/>
+        <field name="comment">Can save a contact with a phone/mobile number that Shield 3 (V3, docs/briefs/sale_gp.md §6) would otherwise block.</field>
+    </record>
+</odoo>

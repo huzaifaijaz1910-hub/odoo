@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Shield 2 (brief §6, V2) — lets Sales Managers extend the typo-domain
+         list without a code change. -->
+    <record id="sale_gp_email_typo_domain_view_list" model="ir.ui.view">
+        <field name="name">sale.gp.email.typo.domain.list</field>
+        <field name="model">sale.gp.email.typo.domain</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="typo_domain"/>
+                <field name="correct_domain"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sale_gp_email_typo_domain_action" model="ir.actions.act_window">
+        <field name="name">Email Typo Domains</field>
+        <field name="res_model">sale.gp.email.typo.domain</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <menuitem id="menu_sale_gp_email_typo_domain"
+        name="Email Typo Domains"
+        parent="sale.menu_sale_config"
+        action="sale_gp_email_typo_domain_action"
+        sequence="60"/>
+</odoo>

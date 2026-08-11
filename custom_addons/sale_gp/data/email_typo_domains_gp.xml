@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Shield 2 (brief §6, V2) — configuration, not a Python literal.
+         PLACEHOLDER: these three entries are the examples given in the brief
+         itself. Brief §12 open questions flags this list as provisional and
+         asks for the client's real typo-domain list from their existing
+         base. Do not treat this seed as final. -->
+    <record id="email_typo_domain_gmial_gp" model="sale.gp.email.typo.domain">
+        <field name="typo_domain">gmial.com</field>
+        <field name="correct_domain">gmail.com</field>
+    </record>
+    <record id="email_typo_domain_hotmial_gp" model="sale.gp.email.typo.domain">
+        <field name="typo_domain">hotmial.com</field>
+        <field name="correct_domain">hotmail.com</field>
+    </record>
+    <record id="email_typo_domain_yaho_gp" model="sale.gp.email.typo.domain">
+        <field name="typo_domain">yaho.com</field>
+        <field name="correct_domain">yahoo.com</field>
+    </record>
+</odoo>

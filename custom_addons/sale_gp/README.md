@@ -10,9 +10,10 @@ Full specification: `docs/briefs/sale_gp.md`. Module-specific working notes:
 
 ## Status
 
-Slice 1 of `docs/briefs/sale_gp.md` §15: module scaffold and the
-stage-to-state mapping only. No shields, automations, tags, or dunning yet —
-those land in later slices, in the order the brief lays out.
+Slice 1 (module scaffold, stage-to-state mapping) plus Shields 2 and 3 of
+`docs/briefs/sale_gp.md` §6. No other shields, no triggers, no discount
+tiers, no dunning yet — those land in later slices, in the order the brief
+lays out.
 
 ## What's in this slice
 
@@ -43,12 +44,87 @@ those land in later slices, in the order the brief lays out.
   These fields are not yet surfaced in any view — that's UI wiring for a
   later slice.
 
+## Shield 2 — wrong email (V2)
+
+`res.partner`, warning only, never blocks.
+
+- `models/res_partner.py`: `_email_gp_check(email)` flags a missing `@`, a
+  missing domain, whitespace inside the address, or a domain that matches
+  the typo list — and proposes a corrected address when one exists.
+- `_onchange_email_gp` fires this while the user is editing the Email field
+  and shows the result as a standard Odoo onchange warning popup
+  (non-blocking — the value is not reverted).
+- `email_gp_warning` is a computed field holding the same message, wired
+  into the Contact form (`views/res_partner_views.xml`, inherits
+  `base.view_partner_form`) as a small red note under the Email field, so
+  the warning is still visible after the popup is dismissed.
+- The typo-domain list is data, not a Python literal:
+  `sale.gp.email.typo.domain` (`models/sale_gp_email_typo_domain.py`),
+  seeded from `data/email_typo_domains_gp.xml`, editable at Sales →
+  Configuration → Email Typo Domains (Sales Manager group).
+  **Placeholder data** — the three seeded entries (`gmial.com`,
+  `hotmial.com`, `yaho.com`) are the examples given in the brief itself.
+  Brief §12 flags the real list as an open question; ask the client for
+  their actual typo-domain history before relying on this in production.
+
+## Shield 3 — wrong phone (V3)
+
+`res.partner`, hard block — the only one of the five shields that blocks.
+
+- `_check_phone_gp` (`@api.constrains('phone', 'country_id')`) runs
+  `_phone_format(fname='phone', raise_exception=True)`, native to the
+  `phone_validation` module this manifest already depends on. No
+  hand-rolled regex: `phonenumbers` (via `phone_validation`) enforces
+  Angola's `+244 9XX XXX XXX` mask and every other country's mask from the
+  same call, based on the contact's `country_id` (falling back to the
+  company's country).
+  - `res.partner` in this Odoo build has no separate `mobile` field (only
+    `phone`) — see root `CLAUDE.md` "Environment gotchas". The shield reads
+    a `PHONE_FIELDS_GP` tuple defensively (`fname in partner._fields`) so it
+    still validates `mobile` automatically if a future dependency adds the
+    field back, without needing a code change here.
+  - Too few or too many digits raises `ValidationError`, blocking the save.
+- Overridable by the **Data Quality Shield Override** group
+  (`security/security.xml`) per brief §13 ("anything that blocks... must be
+  overridable by a named group"). Members of that group can save numbers
+  Shield 3 would otherwise reject; everyone else gets a message stating
+  which field, which number, and why it failed.
+
+### `phonenumbers` must actually be installed
+
+`phone_validation` depends on the `phonenumbers` PyPI package but degrades
+**silently** without it — no error, every phone number is treated as valid,
+and Shield 3 does nothing. Check for `pip show phonenumbers` /
+`pip install phonenumbers` in the venv before trusting Shield 3 in any
+environment. Logged in root `CLAUDE.md` "Environment gotchas" too.
+
 ## Not in this slice (see brief §15 for order)
 
-Tags, the five data-quality shields, sales-flow triggers, discount approval
-tiers, the dunning ladder, reactivation alerts, and the monthly report.
-Shield 4 (duplicate contract) additionally stays out of every slice until
-the "what is a contract" question in brief §12 is answered.
+Shields 1, 4 and 5, tags, sales-flow triggers, discount approval tiers, the
+dunning ladder, reactivation alerts, and the monthly report. Shield 4
+(duplicate contract) additionally stays out of every slice until the "what
+is a contract" question in brief §12 is answered.
+
+## How to test Shields 2 and 3 by hand
+
+1. Install/upgrade, then open **Contacts** and create a new contact.
+2. Type an email with a typo domain, e.g. `test@gmial.com`, then tab out of
+   the field. A warning popup appears suggesting `test@gmail.com`; dismiss
+   it and the value is unchanged — not blocked. The red note under the
+   field repeats the warning until the email is fixed.
+3. Type an email with no `@` (e.g. `test.example.com`) or no domain
+   (e.g. `test@`) — same non-blocking warning behaviour, correction not
+   always possible to propose.
+4. Set Phone to something too short for the contact's country (e.g. `+244
+   911` for an Angola contact) and save. The save is blocked with a message
+   naming the field, the number, and why it failed.
+5. Set Phone to something too long (e.g. `+244 923456789012345`) and save —
+   same hard block.
+6. Set Phone to a valid Angolan mobile (e.g. `+244 923 456 789`) and save —
+   succeeds.
+7. Add a user to the **Data Quality Shield Override** group (Settings →
+   Users, or the group directly) and repeat step 4 as that user — the save
+   now succeeds.
 
 ## How to test this slice by hand
 

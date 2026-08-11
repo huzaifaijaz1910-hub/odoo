@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Shield 2 (brief §6, V2). The onchange on email already pops a
+         non-blocking warning while editing; this adds a standing red note
+         under the field so the warning is still visible after the popup is
+         dismissed, without blocking the save. -->
+    <record id="res_partner_view_form_email_warning_gp" model="ir.ui.view">
+        <field name="name">res.partner.form.email.warning.gp</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <field name="email" position="after">
+                <div class="text-danger" invisible="not email_gp_warning">
+                    <field name="email_gp_warning" nolabel="1" readonly="1"/>
+                </div>
+            </field>
+        </field>
+    </record>
+</odoo>

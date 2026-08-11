@@ -90,6 +90,16 @@ These bit us once and will bite again:
   `cloneReaderDocumentRoot`, removed in PyPDF2 3.0. Symptom: sending a
   quotation raises `DeprecationError` from deep inside `mail_template.py`.
   Fix: `pip install "PyPDF2<3.0"`.
+- **`phonenumbers` is not installed by default.** `phone_validation` degrades
+  silently without it — no error, but every number is treated as valid, so
+  any shield built on `_phone_format(..., raise_exception=True)` silently
+  does nothing. Symptom: log line `The 'phonenumbers' Python module is not
+  installed, contact numbers will not be verified.` at startup. Fix:
+  `pip install phonenumbers`.
+- **`res.partner` has no `mobile` field in this Odoo build** — only `phone`.
+  Code written against both (as `crm.lead` and other models have) needs a
+  `fname in partner._fields` guard or it raises `KeyError` at runtime, not
+  at registration time.
 - **inotify watch limit.** `--dev=reload` watches ~1470 addon directories.
   Symptom: `ERRNO=28 No space left on device` at startup — this is the watch
   limit, not the disk. Fix: raise `fs.inotify.max_user_watches`, or drop
