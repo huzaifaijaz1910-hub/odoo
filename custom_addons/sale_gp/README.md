@@ -10,10 +10,9 @@ Full specification: `docs/briefs/sale_gp.md`. Module-specific working notes:
 
 ## Status
 
-Slice 1 (module scaffold, stage-to-state mapping) plus Shields 2 and 3 of
-`docs/briefs/sale_gp.md` §6. No other shields, no triggers, no discount
-tiers, no dunning yet — those land in later slices, in the order the brief
-lays out.
+Slice 1 (module scaffold, stage-to-state mapping) plus Shields 1, 2 and 3 of
+`docs/briefs/sale_gp.md` §6. No triggers, no discount tiers, no dunning yet —
+those land in later slices, in the order the brief lays out.
 
 ## What's in this slice
 
@@ -43,6 +42,35 @@ lays out.
 
   These fields are not yet surfaced in any view — that's UI wiring for a
   later slice.
+
+## Shield 1 — duplicate contact (V1)
+
+`res.partner`, warning only, never blocks.
+
+- `_duplicate_gp_matches()` (`models/res_partner.py`) searches other
+  contacts sharing the same `phone_sanitized` (the sanitized number
+  computed natively by the `mail.thread.phone` mixin from
+  `phone_validation`, so formatting differences don't hide a match), the
+  same `email` (case-insensitive), or the same `vat`. This build's
+  `res.partner` has no `mobile` field (see root `CLAUDE.md` "Environment
+  gotchas"), so the comparison is phone, email and tax ID only.
+- `_onchange_duplicate_gp` shows a non-blocking popup naming the match(es)
+  while the user is editing Phone, Email or VAT.
+- `duplicate_gp_warning` (computed) and `duplicate_justification_gp`
+  (plain, optional) are wired into the Contact form (inherits
+  `base.view_partner_form`) as a standing warning banner under the VAT
+  field, with an **Open Merge Wizard** button and a free-text justification
+  box.
+- `create`/`write` call `_log_duplicate_gp()`, which posts a chatter note
+  naming the match (as a clickable link via `_get_html_link()`) and either
+  the justification text or "No justification was recorded." — logged
+  every time phone/email/vat/justification changes while a match exists, so
+  the record always carries why it was allowed to save.
+- **Reuse instead of duplicating**: the Open Merge Wizard button calls
+  `action_open_merge_gp()`, which opens Odoo's native
+  `base.action_partner_merge` (`base.partner.merge.automatic.wizard`)
+  pre-loaded with this contact and its match(es) via `active_ids` context —
+  no bespoke dedup engine, per the brief.
 
 ## Shield 2 — wrong email (V2)
 
@@ -100,10 +128,30 @@ environment. Logged in root `CLAUDE.md` "Environment gotchas" too.
 
 ## Not in this slice (see brief §15 for order)
 
-Shields 1, 4 and 5, tags, sales-flow triggers, discount approval tiers, the
+Shields 4 and 5, tags, sales-flow triggers, discount approval tiers, the
 dunning ladder, reactivation alerts, and the monthly report. Shield 4
 (duplicate contract) additionally stays out of every slice until the "what
 is a contract" question in brief §12 is answered.
+
+## How to test Shield 1 by hand
+
+1. Install/upgrade, then open **Contacts** and create a contact with a
+   phone, email and VAT — e.g. Phone `+244 923 111 222`, Email
+   `test@example.com`, VAT `AO123456789`. Save it.
+2. Create a second contact reusing any one of those values (formatting can
+   differ, e.g. `244923111222` for the phone — sanitized comparison still
+   matches). A warning banner appears naming the first contact; save
+   anyway — it is **not** blocked.
+3. Check the second contact's chatter: a note names the match (as a
+   clickable link to the first contact) and says "No justification was
+   recorded."
+4. Type a reason into the **Duplicate Justification** field on the second
+   contact and save again — the chatter gets a new note with that
+   justification text.
+5. Click **Open Merge Wizard** on the warning banner — Odoo's native merge
+   wizard opens with both contacts pre-selected.
+6. Create a third contact with none of those values — no warning, no
+   chatter note.
 
 ## How to test Shields 2 and 3 by hand
 

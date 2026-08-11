@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Shield 1 (brief §6, V1). Warning only — never blocks. Names the
+         matching contact(s), offers the native merge wizard to reuse the
+         existing record, and an optional justification field that gets
+         logged to the chatter either way. -->
+    <record id="res_partner_view_form_duplicate_warning_gp" model="ir.ui.view">
+        <field name="name">res.partner.form.duplicate.warning.gp</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <field name="vat" position="after">
+                <div class="alert alert-warning py-2" role="alert" invisible="not duplicate_gp_warning">
+                    <field name="duplicate_gp_warning" nolabel="1" readonly="1"/>
+                    <button name="action_open_merge_gp" type="object"
+                        string="Open Merge Wizard" class="btn-link p-0" icon="fa-compress"/>
+                    <field name="duplicate_justification_gp" nolabel="1"
+                        placeholder="Why this is not a duplicate (optional, logged to the chatter)..."/>
+                </div>
+            </field>
+        </field>
+    </record>
+
     <!-- Shield 2 (brief §6, V2). The onchange on email already pops a
          non-blocking warning while editing; this adds a standing red note
          under the field so the warning is still visible after the popup is
