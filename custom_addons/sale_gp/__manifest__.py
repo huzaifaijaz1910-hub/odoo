@@ -1,0 +1,28 @@
+{
+    "name": "GotaPura Sales",
+    "version": "19.0.1.0.0",
+    "category": "Sales",
+    "summary": "Five data-quality shields, sales-cycle triggers, discount approvals and escalating dunning",
+    "author": "Supply Steer Technologies",
+    "website": "https://supplysteer.com",
+    "license": "Other proprietary",
+    "depends": [
+        "sale_management",
+        "account",
+        "contacts",
+        "mail",
+        "phone_validation",
+        "project",
+        "crm_gp",
+    ],
+    "data": [
+        "security/ir.model.access.csv",
+        "data/mail_templates.xml",
+        "data/automation_rules.xml",
+        "data/ir_cron.xml",
+        "views/res_config_settings_views.xml",
+        "views/sale_order_views.xml",
+    ],
+    "installable": True,
+    "application": False,
+}

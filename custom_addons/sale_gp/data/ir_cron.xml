@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Slice 1: scaffold only. Scheduled actions (V8, V9, V12, V15, V16) land in later slices. -->
+</odoo>

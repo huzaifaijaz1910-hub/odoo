@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Slice 1: scaffold only. stage_gp / color_gp are defined on the model (brief §3)
+         but not yet surfaced in a view; UI wiring lands in a later slice. -->
+</odoo>
